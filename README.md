@@ -111,6 +111,17 @@ TalkToMe should get a new transcription mode:
 
 The extension should keep the current direct OpenAI path as a fallback until the service has been proven stable.
 
+## Management Frontend
+
+The service includes a small operational admin UI at:
+
+```text
+http://speech-to-text.huis:7077/admin
+```
+
+Admin API calls require `Authorization: Bearer <ADMIN_API_TOKEN>`.
+The UI can create, list, and revoke client tokens. Generated client tokens are displayed once and then stored only as hashes in the configured `CLIENT_KEYS_FILE`.
+
 ## First Milestone
 
 1. Build the Node/Fastify service with health routes and one transcription route.

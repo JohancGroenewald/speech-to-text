@@ -1,5 +1,8 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
 
 const { createClientKeyManager } = require('../src/auth/clientKeys');
 const { parseConfig } = require('../src/config');
@@ -7,13 +10,16 @@ const { emptyTranscript, providerError } = require('../src/errors');
 const { buildServer } = require('../src/server');
 
 function createTestServer(options = {}) {
+  const keysFile =
+    options.keysFile ||
+    path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'speech-to-text-server-')), 'client-keys.json');
   const config = {
     host: '127.0.0.1',
     port: 0,
     openaiApiKey: 'sk-test',
     transcriptionModel: 'gpt-4o-transcribe',
     clientApiKeys: ['client-token'],
-    clientKeysFile: '/tmp/speech-to-text-test-client-keys.json',
+    clientKeysFile: keysFile,
     adminApiToken: 'admin-token',
     maxAudioBytes: 1024,
     requestTimeoutMs: 120000,
@@ -223,6 +229,86 @@ test('maps empty transcripts to 422', async () => {
 
   assert.equal(response.statusCode, 422);
   assert.equal(response.json().error.code, 'empty_transcript');
+});
+
+test('serves the admin frontend shell', async () => {
+  const app = createTestServer();
+  const response = await app.inject({ method: 'GET', url: '/admin' });
+
+  assert.equal(response.statusCode, 200);
+  assert.match(response.headers['content-type'], /text\/html/);
+  assert.match(response.body, /Speech-to-Text Admin/);
+});
+
+test('admin APIs require admin token', async () => {
+  const app = createTestServer();
+  const response = await app.inject({ method: 'GET', url: '/admin/api/status' });
+
+  assert.equal(response.statusCode, 401);
+  assert.equal(response.json().error.code, 'unauthorized');
+});
+
+test('admin can create, list, and revoke client keys', async () => {
+  const app = createTestServer({ config: { clientApiKeys: [] } });
+  const headers = {
+    authorization: 'Bearer admin-token',
+    'content-type': 'application/json'
+  };
+
+  const createdResponse = await app.inject({
+    method: 'POST',
+    url: '/admin/api/client-keys',
+    headers,
+    payload: JSON.stringify({ label: 'talktome-test', notes: 'one machine' })
+  });
+
+  assert.equal(createdResponse.statusCode, 201, createdResponse.body);
+  const created = createdResponse.json();
+  assert.match(created.token, /^stt_/);
+  assert.equal(created.key.label, 'talktome-test');
+  assert.equal(Object.hasOwn(created.key, 'hash'), false);
+
+  const listResponse = await app.inject({
+    method: 'GET',
+    url: '/admin/api/client-keys',
+    headers
+  });
+  assert.equal(listResponse.statusCode, 200);
+  assert.equal(listResponse.json().keys.length, 1);
+  assert.equal(Object.hasOwn(listResponse.json().keys[0], 'hash'), false);
+
+  const authResponse = await app.inject({
+    method: 'POST',
+    url: '/v1/transcriptions',
+    headers: {
+      authorization: `Bearer ${created.token}`,
+      'content-type': 'multipart/form-data; boundary=----speech-to-text-test'
+    },
+    payload: multipartBody('----speech-to-text-test', [
+      filePart('----speech-to-text-test', 'file', 'sample.wav', 'audio/wav', Buffer.from('RIFF'))
+    ])
+  });
+  assert.equal(authResponse.statusCode, 200, authResponse.body);
+
+  const revokeResponse = await app.inject({
+    method: 'DELETE',
+    url: `/admin/api/client-keys/${created.key.id}`,
+    headers: { authorization: 'Bearer admin-token' }
+  });
+  assert.equal(revokeResponse.statusCode, 200);
+
+  const revokedAuthResponse = await app.inject({
+    method: 'POST',
+    url: '/v1/transcriptions',
+    headers: {
+      authorization: `Bearer ${created.token}`,
+      'content-type': 'multipart/form-data; boundary=----speech-to-text-test'
+    },
+    payload: multipartBody('----speech-to-text-test', [
+      filePart('----speech-to-text-test', 'file', 'sample.wav', 'audio/wav', Buffer.from('RIFF'))
+    ])
+  });
+  assert.equal(revokedAuthResponse.statusCode, 401);
 });
 
 function multipartBody(boundary, parts) {

@@ -2,6 +2,7 @@ const crypto = require('node:crypto');
 const Fastify = require('fastify');
 const multipart = require('@fastify/multipart');
 
+const { registerAdminRoutes } = require('./admin/routes');
 const { createClientKeyManager } = require('./auth/clientKeys');
 const { getReadiness, loadEnvFileIfPresent, parseConfig } = require('./config');
 const {
@@ -131,6 +132,8 @@ function buildServer({
     return response;
   });
 
+  registerAdminRoutes(app, { config, keyManager });
+
   return app;
 }
 
@@ -235,6 +238,9 @@ function normalizeError(error) {
   }
   if (error.statusCode === 413) {
     return audioTooLarge(error.message || 'Audio exceeds the configured size limit.');
+  }
+  if (error.statusCode >= 400 && error.statusCode < 500) {
+    return invalidRequest(error.message || 'Invalid request.');
   }
   return new ApiError(500, 'internal_error', 'Internal server error.', {
     cause: error,

@@ -77,7 +77,7 @@ This is the working list for getting `speech-to-text.huis` from design proposal 
 
 ## 4. Client API Keys
 
-- [ ] Choose the first key-storage design before building the frontend.
+- [x] Choose the first key-storage design before building the frontend.
 - [ ] Minimum viable option: `SPEECH_TO_TEXT_API_KEYS` in the systemd environment file.
 - [x] Better management option: root-owned JSON key store with hashed tokens, labels, creation dates, and revoked state.
 - [x] If using a key store, add config such as `CLIENT_KEYS_FILE=/etc/speech-to-text/client-keys.json`.
@@ -90,35 +90,35 @@ This is the working list for getting `speech-to-text.huis` from design proposal 
 
 ## 5. Management Frontend
 
-- [ ] Decide whether the frontend is:
-  - server-rendered by Fastify, or
+- [x] Decide whether the frontend is:
+  - server-rendered by Fastify
   - static assets served by nginx with admin API calls to Fastify.
-- [ ] Keep the first UI small and operational, not marketing-like.
-- [ ] First screen should show service status, readiness, configured model, and key-management actions.
-- [ ] Add client key creation form:
+- [x] Keep the first UI small and operational, not marketing-like.
+- [x] First screen should show service status, readiness, configured model, and key-management actions.
+- [x] Add client key creation form:
   - label
   - optional notes
   - create token
   - one-time copyable token display
-- [ ] Add client key list:
+- [x] Add client key list:
   - label
   - created date
   - last-used date if tracked
   - revoked state
   - revoke action
-- [ ] Add a simple diagnostics panel:
+- [x] Add a simple diagnostics panel:
   - Node version
   - service version or Git SHA
   - provider model
   - max upload size
   - request timeout
-- [ ] Protect the admin UI separately from transcription clients.
-- [ ] Pick initial admin protection:
+- [x] Protect the admin UI separately from transcription clients.
+- [x] Pick initial admin protection:
   - LAN-only plus nginx basic auth, or
-  - `ADMIN_API_TOKEN` bearer auth, or
+  - `ADMIN_API_TOKEN` bearer auth
   - both
-- [ ] Ensure the frontend never exposes the OpenAI API key.
-- [ ] Add frontend tests or route tests for key-management flows.
+- [x] Ensure the frontend never exposes the OpenAI API key.
+- [x] Add frontend tests or route tests for key-management flows.
 
 ## 6. HTTPS and nginx
 
