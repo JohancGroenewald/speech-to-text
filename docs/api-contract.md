@@ -20,6 +20,8 @@ Create, list, revoke, and rotate client tokens through the admin UI. Generated c
 
 Health routes may stay unauthenticated while the service is LAN-only. If exposed through a reverse proxy, require authentication there too.
 
+Authenticated transcription requests are logged with per-client metadata for request, audio input, and response output events. Logs include `client_id` and `client_label`, but never include bearer tokens or raw audio. Transcript text is omitted unless `LOG_TRANSCRIPTS=true` is explicitly enabled.
+
 ## POST /v1/transcriptions
 
 Transcribe one complete audio file.

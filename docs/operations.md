@@ -90,7 +90,19 @@ Watch transcription latency and metadata during a client rollout:
 sudo /opt/speech-to-text/scripts/watch-transcriptions.sh "10 minutes ago"
 ```
 
-The watcher should show `duration_ms`, `provider`, `model`, and `transcript_logged:false`. It must not show client tokens, raw audio, or transcript text.
+The watcher shows the client request, audio input, transcription completion, and response output events. It must not show client tokens, raw audio, or transcript text.
+
+Every authenticated transcription request also writes per-client audit events:
+
+```text
+client request received
+client audio received
+client response sent
+```
+
+These events include metadata such as `request_id`, `client_id`, `client_label`, `client_source`, request content type and length, `audio_bytes`, MIME type, language hint, response status, provider, model, duration, response text character count, and error code when applicable.
+
+By default the logs do not include bearer tokens, raw audio, or transcript text. Set `LOG_TRANSCRIPTS=true` only when transcript text is intentionally needed in logs for a short diagnostic window.
 
 For a one-shot server-side rollout check, run:
 

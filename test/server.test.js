@@ -42,7 +42,7 @@ function createTestServer(options = {}) {
     config,
     keyManager,
     transcriber,
-    logger: false
+    logger: options.logger ?? false
   });
 }
 
@@ -140,6 +140,76 @@ test('transcribes multipart audio with optional language', async () => {
   assert.equal(body.model, 'gpt-4o-transcribe');
   assert.equal(body.provider, 'openai');
   assert.match(body.request_id, /^req_/);
+});
+
+test('logs per-client input and output metadata without secrets by default', async () => {
+  const capture = createLogCapture();
+  const app = createTestServer({ logger: capture.logger });
+  const boundary = '----speech-to-text-test';
+  const response = await app.inject({
+    method: 'POST',
+    url: '/v1/transcriptions',
+    headers: {
+      authorization: 'Bearer client-token',
+      'content-type': `multipart/form-data; boundary=${boundary}`,
+      'user-agent': 'talktome-test'
+    },
+    payload: multipartBody(boundary, [
+      fieldPart(boundary, 'language', 'en'),
+      filePart(boundary, 'file', 'sample.wav', 'audio/wav', Buffer.from('RIFFdata'))
+    ])
+  });
+
+  assert.equal(response.statusCode, 200, response.body);
+  const clientRequest = capture.record('client request received');
+  const clientAudio = capture.record('client audio received');
+  const transcriptionComplete = capture.record('transcription complete');
+  const clientResponse = capture.record('client response sent');
+
+  assert.equal(clientRequest.client_id, 'env-1');
+  assert.equal(clientRequest.client_label, 'env-1');
+  assert.equal(clientRequest.user_agent, 'talktome-test');
+  assert.match(clientRequest.content_type, /^multipart\/form-data/);
+  assert.equal(clientAudio.audio_bytes, 8);
+  assert.equal(clientAudio.mime_type, 'audio/wav');
+  assert.equal(clientAudio.language, 'en');
+  assert.equal(transcriptionComplete.provider, 'openai');
+  assert.equal(transcriptionComplete.model, 'gpt-4o-transcribe');
+  assert.equal(clientResponse.status_code, 200);
+  assert.equal(clientResponse.provider, 'openai');
+  assert.equal(clientResponse.response_text_chars, response.json().text.length);
+  assert.equal(clientResponse.transcript_logged, false);
+
+  const logOutput = capture.text();
+  assert.equal(logOutput.includes('client-token'), false);
+  assert.equal(logOutput.includes('RIFFdata'), false);
+  assert.equal(logOutput.includes(response.json().text), false);
+});
+
+test('logs authenticated client failures with client context', async () => {
+  const capture = createLogCapture();
+  const app = createTestServer({ logger: capture.logger });
+  const boundary = '----speech-to-text-test';
+  const response = await app.inject({
+    method: 'POST',
+    url: '/v1/transcriptions',
+    headers: {
+      authorization: 'Bearer client-token',
+      'content-type': `multipart/form-data; boundary=${boundary}`
+    },
+    payload: multipartBody(boundary, [
+      filePart(boundary, 'file', 'sample.txt', 'text/plain', Buffer.from('not-audio'))
+    ])
+  });
+
+  assert.equal(response.statusCode, 415);
+  const clientResponse = capture.record('client response sent');
+  const failedRequest = capture.record('request failed');
+  assert.equal(clientResponse.client_id, 'env-1');
+  assert.equal(clientResponse.status_code, 415);
+  assert.equal(clientResponse.error_code, 'unsupported_media');
+  assert.equal(failedRequest.client_id, 'env-1');
+  assert.equal(failedRequest.code, 'unsupported_media');
 });
 
 test('rejects unsupported MIME types', async () => {
@@ -351,4 +421,33 @@ function filePart(boundary, name, filename, contentType, body) {
     body,
     Buffer.from('\r\n')
   ]);
+}
+
+function createLogCapture() {
+  const records = [];
+  const lines = [];
+  return {
+    logger: {
+      level: 'info',
+      redact: ['req.headers.authorization'],
+      stream: {
+        write(line) {
+          const trimmed = line.trim();
+          if (!trimmed) {
+            return;
+          }
+          lines.push(trimmed);
+          records.push(JSON.parse(trimmed));
+        }
+      }
+    },
+    record(message) {
+      const found = records.find((entry) => entry.msg === message);
+      assert.ok(found, `Expected log message: ${message}`);
+      return found;
+    },
+    text() {
+      return lines.join('\n');
+    }
+  };
 }

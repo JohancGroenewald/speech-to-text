@@ -162,6 +162,7 @@ This is the working list for getting `speech-to-text.huis` from design proposal 
 - [x] Add one manual TalkToMe local API transcriber smoke after the extension integration exists.
 - [ ] Add one client-side TalkToMe UI end-to-end test after the extension is updated and its SecretStorage token is set.
 - [x] Confirm logs contain request metadata but not transcript text or secrets.
+- [x] Add per-client request, audio input, and response metadata logs.
 
 ## 9. Tooling and Source Hygiene
 

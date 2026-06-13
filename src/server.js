@@ -54,11 +54,20 @@ function buildServer({
 
   app.setErrorHandler((error, request, reply) => {
     const apiError = normalizeError(error);
+    const durationMs = getRequestDurationMs(request);
+    logClientResponse(request, {
+      statusCode: apiError.statusCode,
+      errorCode: apiError.code,
+      durationMs,
+      transcriptLogged: false
+    });
     request.log.warn(
       {
         code: apiError.code,
         statusCode: apiError.statusCode,
-        request_id: request.id
+        request_id: request.id,
+        client_id: request.client?.id,
+        client_label: request.client?.label
       },
       'request failed'
     );
@@ -101,8 +110,9 @@ function buildServer({
   });
 
   app.post('/v1/transcriptions', { preHandler: authenticateClient(keyManager) }, async (request) => {
-    const startedAt = process.hrtime.bigint();
+    request.transcriptionStartedAt = process.hrtime.bigint();
     const audio = await readMultipartAudio(request, config);
+    logClientAudio(request, audio);
     const result = await transcriber({
       apiKey: config.openaiApiKey,
       audioBuffer: audio.buffer,
@@ -111,12 +121,14 @@ function buildServer({
       model: config.transcriptionModel,
       timeoutMs: config.requestTimeoutMs
     });
-    const durationMs = Number((process.hrtime.bigint() - startedAt) / 1000000n);
+    const durationMs = getRequestDurationMs(request);
 
     request.log.info(
       {
         request_id: request.id,
         client_id: request.client?.id,
+        client_label: request.client?.label,
+        client_source: request.client?.source,
         audio_bytes: audio.buffer.length,
         mime_type: audio.mimeType,
         duration_ms: durationMs,
@@ -134,8 +146,24 @@ function buildServer({
       duration_ms: durationMs,
       request_id: request.id
     };
+    logClientResponse(request, {
+      statusCode: 200,
+      durationMs,
+      provider: result.provider,
+      model: result.model,
+      responseTextChars: result.text.length,
+      transcriptLogged: config.logTranscripts
+    });
     if (config.logTranscripts) {
-      request.log.info({ request_id: request.id, text: result.text }, 'transcript text');
+      request.log.info(
+        {
+          request_id: request.id,
+          client_id: request.client?.id,
+          client_label: request.client?.label,
+          text: result.text
+        },
+        'transcript text'
+      );
     }
     return response;
   });
@@ -157,7 +185,83 @@ function authenticateClient(keyManager) {
       throw unauthorized();
     }
     request.client = client;
+    request.transcriptionStartedAt = process.hrtime.bigint();
+    logClientRequest(request);
   };
+}
+
+function logClientRequest(request) {
+  request.log.info(
+    {
+      request_id: request.id,
+      client_id: request.client?.id,
+      client_label: request.client?.label,
+      client_source: request.client?.source,
+      method: request.method,
+      route: request.routeOptions?.url || request.url,
+      remote_address: request.ip,
+      user_agent: request.headers['user-agent'] || '',
+      content_type: request.headers['content-type'] || '',
+      content_length: request.headers['content-length'] || ''
+    },
+    'client request received'
+  );
+}
+
+function logClientAudio(request, audio) {
+  request.log.info(
+    {
+      request_id: request.id,
+      client_id: request.client?.id,
+      client_label: request.client?.label,
+      client_source: request.client?.source,
+      audio_bytes: audio.buffer.length,
+      mime_type: audio.mimeType,
+      language: audio.language || '',
+      language_present: Boolean(audio.language)
+    },
+    'client audio received'
+  );
+}
+
+function logClientResponse(
+  request,
+  {
+    statusCode,
+    durationMs,
+    provider = undefined,
+    model = undefined,
+    responseTextChars = undefined,
+    errorCode = undefined,
+    transcriptLogged = false
+  }
+) {
+  if (!request.client) {
+    return;
+  }
+  request.log.info(
+    {
+      request_id: request.id,
+      client_id: request.client.id,
+      client_label: request.client.label,
+      client_source: request.client.source,
+      status_code: statusCode,
+      error_code: errorCode,
+      duration_ms: durationMs,
+      provider,
+      model,
+      response_text_chars: responseTextChars,
+      transcript_logged: transcriptLogged
+    },
+    'client response sent'
+  );
+}
+
+function getRequestDurationMs(request) {
+  if (!request.transcriptionStartedAt) {
+    return undefined;
+  }
+  return Number((process.hrtime.bigint() - request.transcriptionStartedAt) / 1000000n);
 }
 
 async function readMultipartAudio(request, config) {
