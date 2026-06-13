@@ -162,7 +162,19 @@ This is the working list for getting `speech-to-text.huis` from design proposal 
 - [ ] Add one manual TalkToMe end-to-end test after the extension integration exists.
 - [ ] Confirm logs contain request metadata but not transcript text or secrets.
 
-## 9. TalkToMe Integration
+## 9. Tooling and Source Hygiene
+
+- [ ] Set up linters/parsers for every source/documentation file type in the repository.
+- [ ] Cover JavaScript source and tests.
+- [ ] Cover Markdown documentation.
+- [ ] Cover JSON files such as `package.json` and deployment examples.
+- [ ] Cover nginx and systemd config files if they are stored in the repository.
+- [ ] Wire the checks into a Git pre-commit hook.
+- [ ] Add a source-file size check that fails on source files with more than 500 lines of source code.
+- [ ] Refactor any source files that exceed the 500-line limit.
+- [ ] Document how to run the full local validation suite.
+
+## 10. TalkToMe Integration
 
 - [ ] Add `TalkToMe/src/transcription/localApiTranscriber.js`.
 - [ ] Add settings:
@@ -181,7 +193,7 @@ This is the working list for getting `speech-to-text.huis` from design proposal 
 - [ ] Add extension tests around provider selection and local API errors.
 - [ ] Package a new TalkToMe `.vsix` for one-machine rollout.
 
-## 10. Operational Docs
+## 11. Operational Docs
 
 - [ ] Document first-time setup.
 - [ ] Document service start, stop, restart, and log inspection.
@@ -191,7 +203,7 @@ This is the working list for getting `speech-to-text.huis` from design proposal 
 - [ ] Document manual recovery if the admin UI is unavailable.
 - [ ] Document backup needs for any client key store.
 
-## 11. Rollout
+## 12. Rollout
 
 - [ ] Deploy service manually on `speech-to-text.huis`.
 - [ ] Confirm local curl transcription works.
