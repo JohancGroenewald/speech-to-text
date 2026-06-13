@@ -163,6 +163,7 @@ This is the working list for getting `speech-to-text.huis` from design proposal 
 - [ ] Add one client-side TalkToMe UI end-to-end test after the extension is updated and its SecretStorage token is set.
 - [x] Confirm logs contain request metadata but not transcript text or secrets.
 - [x] Add per-client request, audio input, and response metadata logs.
+- [x] Expose sanitized recent client logs in the admin panel.
 
 ## 9. Tooling and Source Hygiene
 

@@ -6,6 +6,7 @@ const state = {
 const statusEl = document.getElementById('overallStatus');
 const statusFacts = document.getElementById('statusFacts');
 const keysTable = document.getElementById('keysTable');
+const logsTable = document.getElementById('logsTable');
 const createdToken = document.getElementById('createdToken');
 const createdTokenCode = createdToken.querySelector('code');
 const toast = document.getElementById('toast');
@@ -14,6 +15,8 @@ const talkToMeEndpointInput = document.getElementById('talkToMeEndpoint');
 const talkToMeCaFileInput = document.getElementById('talkToMeCaFile');
 const talkToMeSettingsCode = document.getElementById('talkToMeSettings');
 const themeToggle = document.getElementById('themeToggle');
+const logSinceInput = document.getElementById('logSince');
+const logLimitInput = document.getElementById('logLimit');
 
 adminTokenInput.value = state.adminToken;
 talkToMeEndpointInput.value = new URL('/v1/transcriptions', window.location.origin).href;
@@ -29,6 +32,7 @@ document.getElementById('adminTokenForm').addEventListener('submit', async (even
 
 document.getElementById('refreshStatus').addEventListener('click', loadStatus);
 document.getElementById('refreshKeys').addEventListener('click', loadKeys);
+document.getElementById('refreshLogs').addEventListener('click', loadLogs);
 
 themeToggle.addEventListener('click', () => {
   const nextTheme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
@@ -69,6 +73,7 @@ talkToMeCaFileInput.addEventListener('input', renderTalkToMeSettings);
 async function refreshAll() {
   await loadStatus();
   await loadKeys();
+  await loadLogs();
 }
 
 async function loadStatus() {
@@ -124,6 +129,31 @@ async function loadKeys() {
   }
 }
 
+async function loadLogs() {
+  const params = new URLSearchParams({
+    since: logSinceInput.value.trim() || '10 minutes ago',
+    limit: logLimitInput.value || '80'
+  });
+  try {
+    const result = await requestJson('/admin/api/logs?' + params.toString());
+    if (!result.logs.length) {
+      logsTable.innerHTML = '<tr><td colspan="5">No client log events found.</td></tr>';
+      return;
+    }
+    logsTable.innerHTML = result.logs.map((log) => (
+      '<tr>' +
+        cell(formatDate(log.timestamp)) +
+        cell('<span class="log-event">' + escapeHtml(log.event) + '</span>') +
+        cell(escapeHtml(log.client_label || log.client_id || 'unknown')) +
+        cell(escapeHtml(logFlow(log))) +
+        cell(escapeHtml(logDetails(log))) +
+      '</tr>'
+    )).join('');
+  } catch (error) {
+    logsTable.innerHTML = '<tr><td colspan="5">' + escapeHtml(error.message) + '</td></tr>';
+  }
+}
+
 async function requestJson(url, options = {}) {
   const headers = {
     authorization: 'Bearer ' + state.adminToken,
@@ -159,7 +189,74 @@ function formatDate(value) {
 }
 
 function formatBytes(value) {
-  return (value / 1024 / 1024).toFixed(1) + ' MB';
+  if (value === undefined || value === null || value === '') {
+    return '';
+  }
+  const bytes = Number(value);
+  if (!Number.isFinite(bytes)) {
+    return '';
+  }
+  if (bytes < 1024) {
+    return bytes + ' B';
+  }
+  if (bytes < 1024 * 1024) {
+    return (bytes / 1024).toFixed(1) + ' KB';
+  }
+  return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+}
+
+function logFlow(log) {
+  if (log.event === 'client request received' || log.event === 'client audio received') {
+    return 'In';
+  }
+  if (log.event === 'client response sent') {
+    return 'Out';
+  }
+  if (log.event === 'request failed') {
+    return 'Error';
+  }
+  return 'Provider';
+}
+
+function logDetails(log) {
+  if (log.event === 'client request received') {
+    return joinParts([log.method, log.route, formatBytes(log.content_length), log.content_type]);
+  }
+  if (log.event === 'client audio received') {
+    return joinParts([formatBytes(log.audio_bytes), log.mime_type, log.language ? 'language=' + log.language : '']);
+  }
+  if (log.event === 'transcription complete') {
+    return joinParts([
+      log.provider && log.model ? log.provider + '/' + log.model : '',
+      formatDuration(log.duration_ms),
+      formatBytes(log.audio_bytes),
+      'transcript_logged=' + String(Boolean(log.transcript_logged))
+    ]);
+  }
+  if (log.event === 'client response sent') {
+    return joinParts([
+      'HTTP ' + log.status_code,
+      formatDuration(log.duration_ms),
+      log.error_code ? 'error=' + log.error_code : '',
+      log.response_text_chars !== undefined ? log.response_text_chars + ' chars' : '',
+      log.provider && log.model ? log.provider + '/' + log.model : ''
+    ]);
+  }
+  if (log.event === 'request failed') {
+    return joinParts(['HTTP ' + log.status_code, log.error_code]);
+  }
+  return '';
+}
+
+function formatDuration(value) {
+  if (value === undefined || value === null || value === '') {
+    return '';
+  }
+  return Math.round(Number(value)) + 'ms';
+}
+
+function joinParts(parts) {
+  return parts.filter((part) => part !== undefined && part !== null && String(part).trim()).join(' · ');
 }
 
 function renderTalkToMeSettings() {

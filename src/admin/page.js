@@ -107,6 +107,33 @@ function renderAdminHtml() {
       </div>
     </section>
 
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Client Logs</h2>
+        <div class="log-controls">
+          <input id="logSince" value="10 minutes ago" aria-label="Log window">
+          <input id="logLimit" type="number" min="1" max="200" value="80" aria-label="Log limit">
+          <button id="refreshLogs" type="button">Refresh</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="logs-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Event</th>
+              <th>Client</th>
+              <th>Flow</th>
+              <th>Details</th>
+            </tr>
+          </thead>
+          <tbody id="logsTable">
+            <tr><td colspan="5">Unlock to load client logs.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
     <div id="toast" class="toast" hidden></div>
   </main>
   <script src="/admin/assets/admin.js"></script>

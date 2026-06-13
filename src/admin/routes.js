@@ -2,11 +2,12 @@ const crypto = require('node:crypto');
 
 const { getReadiness } = require('../config');
 const { ApiError, invalidRequest, unauthorized } = require('../errors');
+const { createJournalLogReader } = require('./logs');
 const { renderAdminHtml } = require('./page');
 const { ADMIN_CLIENT_SCRIPT } = require('./clientScript');
 const { ADMIN_CSS } = require('./styles');
 
-function registerAdminRoutes(app, { config, keyManager }) {
+function registerAdminRoutes(app, { config, keyManager, logReader = createJournalLogReader() }) {
   app.get('/admin', async (_request, reply) => {
     reply.type('text/html; charset=utf-8');
     return renderAdminHtml();
@@ -40,6 +41,21 @@ function registerAdminRoutes(app, { config, keyManager }) {
   app.get('/admin/api/client-keys', { preHandler: authenticateAdmin(config) }, async () => ({
     keys: keyManager.listKeys()
   }));
+
+  app.get('/admin/api/logs', { preHandler: authenticateAdmin(config) }, async (request) => {
+    try {
+      return {
+        logs: await logReader.readLogs({
+          since: request.query?.since || '10 minutes ago',
+          limit: request.query?.limit || 80
+        })
+      };
+    } catch (error) {
+      throw new ApiError(503, 'logs_unavailable', error.message || 'Logs are unavailable.', {
+        expose: true
+      });
+    }
+  });
 
   app.post('/admin/api/client-keys', { preHandler: authenticateAdmin(config) }, async (request, reply) => {
     const body = request.body || {};

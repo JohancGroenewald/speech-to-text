@@ -34,6 +34,7 @@ function buildServer({
     keysFile: config.clientKeysFile
   }),
   transcriber = transcribeWithOpenAI,
+  adminLogReader,
   logger = {
     level: 'info',
     redact: ['req.headers.authorization']
@@ -168,7 +169,7 @@ function buildServer({
     return response;
   });
 
-  registerAdminRoutes(app, { config, keyManager });
+  registerAdminRoutes(app, { config, keyManager, logReader: adminLogReader });
 
   return app;
 }

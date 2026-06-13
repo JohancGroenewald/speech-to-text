@@ -34,6 +34,8 @@ sudo systemctl enable --now speech-to-text
 sudo systemctl status speech-to-text
 ```
 
+The unit uses `SupplementaryGroups=systemd-journal` so the admin UI can show sanitized recent client audit logs from this service's journal.
+
 Useful commands:
 
 ```bash

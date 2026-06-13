@@ -45,6 +45,8 @@ The admin token is stored on the server at:
 
 Do not paste the admin token into Git, docs, shell history, or chat logs.
 
+The admin UI includes a client log panel that reads recent sanitized transcription audit events from `journalctl`. The systemd unit grants the service `systemd-journal` as a supplementary group for this read-only view.
+
 ## Client Keys
 
 Create client keys from the admin UI. Generated tokens are shown once. After creation, only the token hash is stored in:
@@ -91,6 +93,8 @@ sudo /opt/speech-to-text/scripts/watch-transcriptions.sh "10 minutes ago"
 ```
 
 The watcher shows the client request, audio input, transcription completion, and response output events. It must not show client tokens, raw audio, or transcript text.
+
+The same sanitized events are available from the admin UI under `Client Logs`.
 
 Every authenticated transcription request also writes per-client audit events:
 

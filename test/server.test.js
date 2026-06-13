@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 
+const { parseJournalLogLines } = require('../src/admin/logs');
 const { createClientKeyManager } = require('../src/auth/clientKeys');
 const { parseConfig } = require('../src/config');
 const { emptyTranscript, providerError } = require('../src/errors');
@@ -42,6 +43,7 @@ function createTestServer(options = {}) {
     config,
     keyManager,
     transcriber,
+    adminLogReader: options.adminLogReader,
     logger: options.logger ?? false
   });
 }
@@ -326,6 +328,7 @@ test('serves the admin frontend shell', async () => {
   assert.match(response.body, /Speech-to-Text Admin/);
   assert.match(response.body, /themeToggle/);
   assert.match(response.body, /TalkToMe Settings/);
+  assert.match(response.body, /Client Logs/);
 });
 
 test('admin APIs require admin token', async () => {
@@ -334,6 +337,44 @@ test('admin APIs require admin token', async () => {
 
   assert.equal(response.statusCode, 401);
   assert.equal(response.json().error.code, 'unauthorized');
+});
+
+test('admin can read sanitized client logs', async () => {
+  let query;
+  const app = createTestServer({
+    adminLogReader: {
+      async readLogs(options) {
+        query = options;
+        return [
+          {
+            timestamp: '2026-06-13T21:50:00.000Z',
+            event: 'client response sent',
+            request_id: 'req_test',
+            client_id: 'env-1',
+            client_label: 'env-1',
+            status_code: 200,
+            duration_ms: 123,
+            response_text_chars: 11,
+            transcript_logged: false
+          }
+        ];
+      }
+    }
+  });
+  const response = await app.inject({
+    method: 'GET',
+    url: '/admin/api/logs?since=5%20minutes%20ago&limit=12',
+    headers: { authorization: 'Bearer admin-token' }
+  });
+
+  assert.equal(response.statusCode, 200, response.body);
+  assert.deepEqual(query, {
+    since: '5 minutes ago',
+    limit: '12'
+  });
+  assert.equal(response.json().logs.length, 1);
+  assert.equal(response.json().logs[0].event, 'client response sent');
+  assert.equal(response.json().logs[0].response_text_chars, 11);
 });
 
 test('admin can create, list, and revoke client keys', async () => {
@@ -399,6 +440,41 @@ test('admin can create, list, and revoke client keys', async () => {
   assert.equal(revokedAuthResponse.statusCode, 401);
 });
 
+test('journal parser returns only sanitized client audit events', () => {
+  const output = [
+    journalLine({
+      msg: 'client request received',
+      request_id: 'req_one',
+      client_id: 'key_one',
+      client_label: 'talktome-one',
+      method: 'POST',
+      route: '/v1/transcriptions',
+      content_length: '100',
+      content_type: 'multipart/form-data'
+    }),
+    journalLine({
+      msg: 'transcript text',
+      request_id: 'req_one',
+      text: 'secret transcript'
+    }),
+    journalLine({
+      msg: 'client response sent',
+      request_id: 'req_one',
+      client_id: 'key_one',
+      status_code: 200,
+      response_text_chars: 17,
+      transcript_logged: false
+    })
+  ].join('\n');
+
+  const logs = parseJournalLogLines(output);
+  assert.equal(logs.length, 2);
+  assert.equal(logs[0].event, 'client request received');
+  assert.equal(logs[1].event, 'client response sent');
+  assert.equal(JSON.stringify(logs).includes('secret transcript'), false);
+  assert.equal(Object.hasOwn(logs[0], 'text'), false);
+});
+
 function multipartBody(boundary, parts) {
   return Buffer.concat([...parts, Buffer.from(`--${boundary}--\r\n`)]);
 }
@@ -450,4 +526,16 @@ function createLogCapture() {
       return lines.join('\n');
     }
   };
+}
+
+function journalLine(payload) {
+  return JSON.stringify({
+    __REALTIME_TIMESTAMP: '1781387400000000',
+    MESSAGE: JSON.stringify({
+      level: 30,
+      time: 1781387400000,
+      hostname: 'speech-to-text',
+      ...payload
+    })
+  });
 }

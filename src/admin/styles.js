@@ -276,6 +276,12 @@ dd {
   white-space: pre;
 }
 
+.log-controls {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) 86px auto;
+  gap: 8px;
+}
+
 .table-wrap {
   overflow-x: auto;
   margin-top: 12px;
@@ -305,6 +311,25 @@ td {
   font-size: 14px;
 }
 
+.logs-table {
+  min-width: 960px;
+}
+
+.logs-table td:last-child {
+  color: var(--muted);
+}
+
+.log-event {
+  display: inline-block;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 8px;
+  background: var(--panel-muted);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 .toast {
   position: fixed;
   right: 18px;
@@ -322,9 +347,14 @@ td {
   .topbar,
   .auth-panel,
   .panel-head,
-  .inline-form {
+  .inline-form,
+  .log-controls {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .log-controls {
+    display: flex;
   }
 
   .grid,
