@@ -71,6 +71,12 @@ Out of scope for the first implementation:
   package.json
 ```
 
+## Documentation
+
+- [API contract](docs/api-contract.md)
+- [Implementation plan](docs/implementation-plan.md)
+- [Project TODO](docs/todo.md)
+
 ## Configuration
 
 The service should read configuration from environment variables:
