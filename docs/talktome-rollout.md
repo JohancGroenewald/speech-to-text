@@ -1,6 +1,6 @@
 # TalkToMe Rollout
 
-Status: TalkToMe `0.0.90` is published to the Huis extension feed.
+Status: TalkToMe `0.0.91` is published to the Huis extension feed.
 
 ## Update TalkToMe
 
@@ -13,7 +13,7 @@ http://vscode.huis
 The feed should show:
 
 ```text
-JohancGroenewald.talk-to-me 0.0.90
+JohancGroenewald.talk-to-me 0.0.91
 ```
 
 This workspace includes `.vscode/extensions.private.json`, so VS Code clients with `garmin.private-extension-manager` installed should discover the Huis feed when the workspace opens.
@@ -29,7 +29,7 @@ Set these TalkToMe settings on the client machine or workspace:
 }
 ```
 
-If the VS Code extension host does not trust the Huis root CA, also set a PEM file path that exists on the client machine:
+If the VS Code extension host does not trust the Huis root CA, also set a PEM file path that exists on that client machine:
 
 ```json
 {
@@ -37,11 +37,11 @@ If the VS Code extension host does not trust the Huis root CA, also set a PEM fi
 }
 ```
 
-The Linux path above works on `vscode.huis`. On Windows or macOS, use the path where the Huis root CA PEM is stored on that client.
+The Linux path above works only for Linux clients such as `vscode.huis`. On Windows or macOS, use the path where the Huis root CA PEM is stored on that client. Keep OS-specific CA paths in user or machine settings, not in the shared workspace.
 
-This repository includes `.vscode/settings.json` with the Linux `vscode.huis` values already set. The active `/opt/speech-to-text.code-workspace` file also sets `talkToMe.transcriptionProvider`, `talkToMe.transcriptionEndpoint`, and `talkToMe.transcriptionCaFile`, because VS Code loads that workspace file for this server session.
+This repository includes `.vscode/settings.json` with the shared `localApi` provider and endpoint values already set. The active `/opt/speech-to-text.code-workspace` file also sets `talkToMe.transcriptionProvider` and `talkToMe.transcriptionEndpoint`, because VS Code loads that workspace file for this server session.
 
-Opening this workspace with TalkToMe `0.0.90` should therefore select `localApi` automatically. The token still has to be stored through SecretStorage.
+Opening this workspace with TalkToMe `0.0.91` should therefore select `localApi` automatically. The token still has to be stored through SecretStorage.
 
 ## Store The Client Token
 
