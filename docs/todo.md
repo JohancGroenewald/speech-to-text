@@ -193,7 +193,7 @@ This is the working list for getting `speech-to-text.huis` from design proposal 
   - paste and submit workflow
   - no-speech skip behavior
 - [x] Add extension tests around provider selection and local API errors.
-- [ ] Package a new TalkToMe `.vsix` for one-machine rollout.
+- [x] Package a new TalkToMe `.vsix` for one-machine rollout.
 
 ## 11. Operational Docs
 
