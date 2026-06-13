@@ -111,6 +111,22 @@ sudo systemctl restart speech-to-text
 
 Commit and push dependency lockfile changes after tests pass.
 
+## Local Validation
+
+Run the full validation suite with:
+
+```bash
+npm run validate
+```
+
+This runs JavaScript linting, Markdown linting, JSON parsing, shell checks, nginx/systemd config parsing, source-file length checks, JavaScript syntax checks, and tests.
+
+The repo uses `.githooks/pre-commit` for the same validation gate:
+
+```bash
+git config core.hooksPath .githooks
+```
+
 ## Recovery
 
 If nginx is unavailable, inspect its config and logs:

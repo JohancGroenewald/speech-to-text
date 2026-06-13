@@ -156,6 +156,9 @@ Smallstep step CLI 0.30.6
 jq 1.7
 nginx 1.24.0
 espeak-ng 1.51
+shellcheck 0.9.0
+ESLint 10.x
+markdownlint-cli2 0.22.x
 ```
 
 Base OS packages added for development and deployment:
@@ -172,6 +175,7 @@ nginx
 jq
 step-cli
 espeak-ng
+shellcheck
 ```
 
 Local configuration state:

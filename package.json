@@ -10,7 +10,14 @@
     "start": "node src/server.js",
     "dev": "ENV_FILE=/etc/speech-to-text/speech-to-text.env node --watch src/server.js",
     "test": "node --test",
-    "lint": "node scripts/check-syntax.js"
+    "lint": "npm run lint:js && npm run lint:md && npm run lint:json && npm run lint:sh && npm run lint:configs && npm run lint:source-lines && node scripts/check-syntax.js",
+    "lint:configs": "bash scripts/check-configs.sh",
+    "lint:js": "eslint .",
+    "lint:json": "node scripts/check-json.js",
+    "lint:md": "markdownlint-cli2 \"**/*.md\" \"#node_modules\"",
+    "lint:sh": "shellcheck scripts/*.sh",
+    "lint:source-lines": "node scripts/check-source-lines.js",
+    "validate": "npm run lint && npm test"
   },
   "repository": {
     "type": "git",
@@ -23,5 +30,10 @@
   "dependencies": {
     "@fastify/multipart": "^10.0.0",
     "fastify": "^5.8.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.5.0",
+    "markdownlint-cli2": "^0.22.1"
   }
 }

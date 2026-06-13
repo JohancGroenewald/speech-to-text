@@ -164,15 +164,15 @@ This is the working list for getting `speech-to-text.huis` from design proposal 
 
 ## 9. Tooling and Source Hygiene
 
-- [ ] Set up linters/parsers for every source/documentation file type in the repository.
-- [ ] Cover JavaScript source and tests.
-- [ ] Cover Markdown documentation.
-- [ ] Cover JSON files such as `package.json` and deployment examples.
-- [ ] Cover nginx and systemd config files if they are stored in the repository.
-- [ ] Wire the checks into a Git pre-commit hook.
-- [ ] Add a source-file size check that fails on source files with more than 500 lines of source code.
-- [ ] Refactor any source files that exceed the 500-line limit.
-- [ ] Document how to run the full local validation suite.
+- [x] Set up linters/parsers for every source/documentation file type in the repository.
+- [x] Cover JavaScript source and tests.
+- [x] Cover Markdown documentation.
+- [x] Cover JSON files such as `package.json` and deployment examples.
+- [x] Cover nginx and systemd config files if they are stored in the repository.
+- [x] Wire the checks into a Git pre-commit hook.
+- [x] Add a source-file size check that fails on source files with more than 500 lines of source code.
+- [x] Refactor any source files that exceed the 500-line limit.
+- [x] Document how to run the full local validation suite.
 
 ## 10. TalkToMe Integration
 
