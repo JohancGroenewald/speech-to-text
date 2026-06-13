@@ -14,7 +14,10 @@ function renderAdminHtml() {
         <h1>Speech-to-Text Admin</h1>
         <p>Local API status and client token management.</p>
       </div>
-      <div class="status-pill" id="overallStatus">Locked</div>
+      <div class="top-actions">
+        <button id="themeToggle" class="secondary" type="button" aria-pressed="false">Dark</button>
+        <div class="status-pill" id="overallStatus">Locked</div>
+      </div>
     </header>
 
     <section class="panel auth-panel">
@@ -60,6 +63,24 @@ function renderAdminHtml() {
           <button id="copyToken" type="button">Copy</button>
         </div>
       </section>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>TalkToMe Settings</h2>
+        <button id="copyTalkToMeSettings" type="button">Copy</button>
+      </div>
+      <div class="settings-form">
+        <label>
+          Endpoint
+          <input id="talkToMeEndpoint" value="https://speech-to-text.huis/v1/transcriptions">
+        </label>
+        <label>
+          CA file
+          <input id="talkToMeCaFile" placeholder="/etc/ssl/certs/huis-root-ca.pem">
+        </label>
+      </div>
+      <pre class="settings-code"><code id="talkToMeSettings"></code></pre>
     </section>
 
     <section class="panel">

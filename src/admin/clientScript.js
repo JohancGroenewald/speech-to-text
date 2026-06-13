@@ -10,8 +10,15 @@ const createdToken = document.getElementById('createdToken');
 const createdTokenCode = createdToken.querySelector('code');
 const toast = document.getElementById('toast');
 const adminTokenInput = document.getElementById('adminToken');
+const talkToMeEndpointInput = document.getElementById('talkToMeEndpoint');
+const talkToMeCaFileInput = document.getElementById('talkToMeCaFile');
+const talkToMeSettingsCode = document.getElementById('talkToMeSettings');
+const themeToggle = document.getElementById('themeToggle');
 
 adminTokenInput.value = state.adminToken;
+talkToMeEndpointInput.value = new URL('/v1/transcriptions', window.location.origin).href;
+applyTheme(localStorage.getItem('speechToTextTheme') || preferredTheme());
+renderTalkToMeSettings();
 
 document.getElementById('adminTokenForm').addEventListener('submit', async (event) => {
   event.preventDefault();
@@ -22,6 +29,12 @@ document.getElementById('adminTokenForm').addEventListener('submit', async (even
 
 document.getElementById('refreshStatus').addEventListener('click', loadStatus);
 document.getElementById('refreshKeys').addEventListener('click', loadKeys);
+
+themeToggle.addEventListener('click', () => {
+  const nextTheme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  localStorage.setItem('speechToTextTheme', nextTheme);
+  applyTheme(nextTheme);
+});
 
 document.getElementById('createKeyForm').addEventListener('submit', async (event) => {
   event.preventDefault();
@@ -44,6 +57,14 @@ document.getElementById('copyToken').addEventListener('click', async () => {
   await navigator.clipboard.writeText(createdTokenCode.textContent);
   showToast('Token copied.');
 });
+
+document.getElementById('copyTalkToMeSettings').addEventListener('click', async () => {
+  await navigator.clipboard.writeText(talkToMeSettingsCode.textContent);
+  showToast('TalkToMe settings copied.');
+});
+
+talkToMeEndpointInput.addEventListener('input', renderTalkToMeSettings);
+talkToMeCaFileInput.addEventListener('input', renderTalkToMeSettings);
 
 async function refreshAll() {
   await loadStatus();
@@ -139,6 +160,29 @@ function formatDate(value) {
 
 function formatBytes(value) {
   return (value / 1024 / 1024).toFixed(1) + ' MB';
+}
+
+function renderTalkToMeSettings() {
+  const settings = {
+    'talkToMe.transcriptionProvider': 'localApi',
+    'talkToMe.transcriptionEndpoint': talkToMeEndpointInput.value.trim()
+  };
+  const caFile = talkToMeCaFileInput.value.trim();
+  if (caFile) {
+    settings['talkToMe.transcriptionCaFile'] = caFile;
+  }
+  talkToMeSettingsCode.textContent = JSON.stringify(settings, null, 2);
+}
+
+function preferredTheme() {
+  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
+function applyTheme(theme) {
+  const normalized = theme === 'dark' ? 'dark' : 'light';
+  document.documentElement.dataset.theme = normalized;
+  themeToggle.textContent = normalized === 'dark' ? 'Light' : 'Dark';
+  themeToggle.setAttribute('aria-pressed', String(normalized === 'dark'));
 }
 
 function escapeHtml(value) {

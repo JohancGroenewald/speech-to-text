@@ -254,6 +254,8 @@ test('serves the admin frontend shell', async () => {
   assert.equal(response.statusCode, 200);
   assert.match(response.headers['content-type'], /text\/html/);
   assert.match(response.body, /Speech-to-Text Admin/);
+  assert.match(response.body, /themeToggle/);
+  assert.match(response.body, /TalkToMe Settings/);
 });
 
 test('admin APIs require admin token', async () => {
