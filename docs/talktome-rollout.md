@@ -1,6 +1,6 @@
 # TalkToMe Rollout
 
-Status: TalkToMe `0.0.91` is published to the Huis extension feed.
+Status: TalkToMe `0.0.92` is published to the Huis extension feed.
 
 ## Update TalkToMe
 
@@ -13,7 +13,7 @@ http://vscode.huis
 The feed should show:
 
 ```text
-JohancGroenewald.talk-to-me 0.0.91
+JohancGroenewald.talk-to-me 0.0.92
 ```
 
 This workspace includes `.vscode/extensions.private.json`, so VS Code clients with `garmin.private-extension-manager` installed should discover the Huis feed when the workspace opens.
@@ -41,7 +41,7 @@ The Linux path above works only for Linux clients such as `vscode.huis`. On Wind
 
 This repository includes `.vscode/settings.json` with the shared `localApi` provider and endpoint values already set. The active `/opt/speech-to-text.code-workspace` file also sets `talkToMe.transcriptionProvider` and `talkToMe.transcriptionEndpoint`, because VS Code loads that workspace file for this server session.
 
-Opening this workspace with TalkToMe `0.0.91` should therefore select `localApi` automatically. The token still has to be stored through SecretStorage.
+Opening this workspace with TalkToMe `0.0.92` should therefore select `localApi` automatically. TalkToMe no longer requires an OpenAI key unless `talkToMe.transcriptionProvider` is explicitly set to `openai`. The local API token still has to be stored through SecretStorage.
 
 ## Store The Client Token
 

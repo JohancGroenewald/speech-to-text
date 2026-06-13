@@ -107,7 +107,7 @@ Keep real secrets out of git. On the server, put runtime secrets in `/etc/speech
 
 ## Client Integration Plan
 
-TalkToMe 0.0.91 includes local transcription mode, private Huis CA support, a provider-aware key check for `localApi`, and safer handling for OS-specific CA file paths:
+TalkToMe 0.0.92 defaults to local transcription mode and includes private Huis CA support, a provider-aware key check for `localApi`, and safer handling for OS-specific CA file paths:
 
 - `talkToMe.transcriptionProvider`: `openai` or `localApi`
 - `talkToMe.transcriptionEndpoint`: defaults to `https://speech-to-text.huis/v1/transcriptions`

@@ -200,6 +200,7 @@ This is the working list for getting `speech-to-text.huis` from design proposal 
 - [x] Publish TalkToMe `0.0.88` with private-CA support to the Huis extension feed.
 - [x] Publish TalkToMe `0.0.90` with provider-aware key UI so `localApi` mode checks the local token instead of the OpenAI key.
 - [x] Publish TalkToMe `0.0.91` so missing OS-specific CA paths fall back to the client trust store instead of failing with `ENOENT`.
+- [x] Publish TalkToMe `0.0.92` so the local API provider is the default and OpenAI keys are only required when OpenAI is explicitly selected.
 
 ## 11. Operational Docs
 
