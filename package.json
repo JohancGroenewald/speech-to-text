@@ -1,0 +1,27 @@
+{
+  "name": "speech-to-text",
+  "version": "0.1.0",
+  "description": "LAN speech-to-text API for TalkToMe and trusted local clients.",
+  "main": "src/server.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "ENV_FILE=/opt/.env node --watch src/server.js",
+    "test": "node --test",
+    "lint": "node scripts/check-syntax.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com-speech-to-text:JohancGroenewald/speech-to-text.git"
+  },
+  "keywords": [],
+  "author": "Johan Groenewald",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@fastify/multipart": "^10.0.0",
+    "fastify": "^5.8.5"
+  }
+}

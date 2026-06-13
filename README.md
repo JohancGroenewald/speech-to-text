@@ -60,13 +60,20 @@ Out of scope for the first implementation:
   docs/
     api-contract.md
     implementation-plan.md
+    todo.md
+  scripts/
+    check-syntax.js
   src/
     server.js
     config.js
+    errors.js
+    auth/
+      clientKeys.js
     transcribers/
       openai.js
   test/
-    transcriptions.test.js
+    clientKeys.test.js
+    server.test.js
   .env.example
   package.json
 ```

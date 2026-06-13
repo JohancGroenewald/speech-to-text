@@ -35,8 +35,10 @@ Multipart fields:
 ```text
 file      required  audio file, max 25 MB
 language  optional  language hint, for example en or af
-model     optional  defaults to server TRANSCRIPTION_MODEL
 ```
+
+The transcription model is server-controlled and defaults to `gpt-4o-transcribe`.
+Clients should not send a `model` field in v1.
 
 Supported first-pass audio types:
 
@@ -47,6 +49,7 @@ audio/mp4
 audio/mpeg
 audio/mp3
 audio/m4a
+audio/mpga
 ```
 
 Successful response:
@@ -134,4 +137,3 @@ If `OPENAI_API_KEY` is missing:
   }
 }
 ```
-

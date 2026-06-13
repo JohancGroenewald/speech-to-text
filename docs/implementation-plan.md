@@ -47,6 +47,12 @@ src/transcribers/openai.js
 
 src/server.js
   Owns HTTP routes, auth, validation, request IDs, logging, and error mapping.
+
+src/auth/clientKeys.js
+  Owns client bearer-token verification plus hashed generated token storage.
+
+src/errors.js
+  Defines stable API errors and status-code mappings.
 ```
 
 ## Provider Call Rules
@@ -136,4 +142,3 @@ Before wiring TalkToMe to it:
 - Do we want transcript text in logs during early development, or keep it disabled from the start?
 - Should `speech-to-text.huis` eventually sit behind HTTPS on the LAN, or is HTTP plus bearer token acceptable for the trusted subnet?
 - Do we want provider selection now, or only OpenAI until there is a real second provider?
-

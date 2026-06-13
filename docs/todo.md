@@ -21,48 +21,47 @@ This is the working list for getting `speech-to-text.huis` from design proposal 
 
 ## 1. Service Scaffold
 
-- [ ] Create `package.json` with scripts for `start`, `dev`, `test`, and `lint`.
-- [ ] Add `.env.example` with non-secret defaults.
-- [ ] Add the planned source layout:
+- [x] Create `package.json` with scripts for `start`, `dev`, `test`, and `lint`.
+- [x] Add `.env.example` with non-secret defaults.
+- [x] Add the planned source layout:
   - `src/server.js`
   - `src/config.js`
   - `src/transcribers/openai.js`
   - `src/auth/clientKeys.js`
   - `src/errors.js`
-- [ ] Add `test/` with Node's built-in test runner.
-- [ ] Decide whether to use CommonJS or ESM before writing implementation code.
-- [ ] Pin the first dependency set:
+- [x] Add `test/` with Node's built-in test runner.
+- [x] Decide whether to use CommonJS or ESM before writing implementation code.
+- [x] Pin the first dependency set:
   - `fastify`
   - `@fastify/multipart`
-  - likely `pino-pretty` for development logs only
 
 ## 2. Configuration
 
-- [ ] Parse and validate environment variables in `src/config.js`.
-- [ ] Required config:
+- [x] Parse and validate environment variables in `src/config.js`.
+- [x] Required config:
   - `OPENAI_API_KEY`
   - `SPEECH_TO_TEXT_API_KEYS` or a client key store path
-- [ ] Defaults:
+- [x] Defaults:
   - `HOST=127.0.0.1` when behind nginx, or `0.0.0.0` for direct LAN testing
   - `PORT=7077`
   - `TRANSCRIPTION_MODEL=gpt-4o-transcribe`
   - `MAX_AUDIO_BYTES=26214400`
   - `REQUEST_TIMEOUT_MS=120000`
   - `LOG_TRANSCRIPTS=false`
-- [ ] Make `/readyz` fail clearly when required provider config is missing.
-- [ ] Ensure logs never print `OPENAI_API_KEY`, client tokens, raw audio, or transcript text by default.
+- [x] Make `/readyz` fail clearly when required provider config is missing.
+- [x] Ensure logs never print `OPENAI_API_KEY`, client tokens, raw audio, or transcript text by default.
 
 ## 3. Transcription API
 
-- [ ] Implement `GET /healthz`.
-- [ ] Implement `GET /readyz`.
-- [ ] Implement `POST /v1/transcriptions`.
-- [ ] Reject unauthenticated transcription requests before reading large request bodies where Fastify allows it.
-- [ ] Accept multipart field `file`.
-- [ ] Accept optional `language`.
-- [ ] Keep `model` server-controlled for v1 unless an explicit allowlist is added.
-- [ ] Enforce maximum audio size.
-- [ ] Validate supported audio MIME types and include OpenAI-compatible aliases:
+- [x] Implement `GET /healthz`.
+- [x] Implement `GET /readyz`.
+- [x] Implement `POST /v1/transcriptions`.
+- [x] Reject unauthenticated transcription requests before reading large request bodies where Fastify allows it.
+- [x] Accept multipart field `file`.
+- [x] Accept optional `language`.
+- [x] Keep `model` server-controlled for v1 unless an explicit allowlist is added.
+- [x] Enforce maximum audio size.
+- [x] Validate supported audio MIME types and include OpenAI-compatible aliases:
   - `audio/wav`
   - `audio/webm`
   - `audio/mp4`
@@ -70,23 +69,23 @@ This is the working list for getting `speech-to-text.huis` from design proposal 
   - `audio/mp3`
   - `audio/m4a`
   - `audio/mpga`
-- [ ] Forward audio to OpenAI `/v1/audio/transcriptions`.
-- [ ] Send `response_format=json`.
-- [ ] Return stable JSON responses with `request_id`.
-- [ ] Map provider errors to documented API error codes.
-- [ ] Reject empty transcript responses with `422 empty_transcript`.
+- [x] Forward audio to OpenAI `/v1/audio/transcriptions`.
+- [x] Send `response_format=json`.
+- [x] Return stable JSON responses with `request_id`.
+- [x] Map provider errors to documented API error codes.
+- [x] Reject empty transcript responses with `422 empty_transcript`.
 
 ## 4. Client API Keys
 
 - [ ] Choose the first key-storage design before building the frontend.
 - [ ] Minimum viable option: `SPEECH_TO_TEXT_API_KEYS` in the systemd environment file.
-- [ ] Better management option: root-owned JSON key store with hashed tokens, labels, creation dates, and revoked state.
-- [ ] If using a key store, add config such as `CLIENT_KEYS_FILE=/etc/speech-to-text/client-keys.json`.
-- [ ] Generate high-entropy client tokens.
-- [ ] Display full client tokens only once at creation time.
-- [ ] Store only hashed client tokens if the management frontend will support revoke/list flows.
-- [ ] Support labels such as `talktome-johan-laptop` or `talktome-desktop`.
-- [ ] Add key verification tests for valid, invalid, missing, and revoked tokens.
+- [x] Better management option: root-owned JSON key store with hashed tokens, labels, creation dates, and revoked state.
+- [x] If using a key store, add config such as `CLIENT_KEYS_FILE=/etc/speech-to-text/client-keys.json`.
+- [x] Generate high-entropy client tokens.
+- [x] Display full client tokens only once at creation time.
+- [x] Store only hashed client tokens if the management frontend will support revoke/list flows.
+- [x] Support labels such as `talktome-johan-laptop` or `talktome-desktop`.
+- [x] Add key verification tests for valid, invalid, missing, and revoked tokens.
 - [ ] Document key rotation steps.
 
 ## 5. Management Frontend
@@ -153,12 +152,12 @@ This is the working list for getting `speech-to-text.huis` from design proposal 
 
 ## 8. Test Plan
 
-- [ ] Unit-test config parsing and validation.
-- [ ] Unit-test auth and client key lookup.
-- [ ] Route-test health and readiness.
-- [ ] Route-test missing file, bad MIME type, oversize file, and bad multipart requests.
-- [ ] Mock OpenAI provider success and error responses.
-- [ ] Verify request IDs appear in success and error responses.
+- [x] Unit-test config parsing and validation.
+- [x] Unit-test auth and client key lookup.
+- [x] Route-test health and readiness.
+- [x] Route-test missing file, bad MIME type, oversize file, and bad multipart requests.
+- [x] Mock OpenAI provider success and error responses.
+- [x] Verify request IDs appear in success and error responses.
 - [ ] Add one manual curl test with a tiny WAV file.
 - [ ] Add one manual TalkToMe end-to-end test after the extension integration exists.
 - [ ] Confirm logs contain request metadata but not transcript text or secrets.
@@ -201,4 +200,3 @@ This is the working list for getting `speech-to-text.huis` from design proposal 
 - [ ] Switch one machine to `localApi`.
 - [ ] Monitor logs and latency.
 - [ ] Broaden to additional clients after one stable day of use.
-
