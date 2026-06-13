@@ -84,6 +84,7 @@ Out of scope for the first implementation:
 - [Implementation plan](docs/implementation-plan.md)
 - [Deployment](docs/deployment.md)
 - [Operations](docs/operations.md)
+- [TalkToMe rollout](docs/talktome-rollout.md)
 - [Project TODO](docs/todo.md)
 
 ## Configuration

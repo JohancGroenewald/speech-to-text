@@ -159,7 +159,8 @@ This is the working list for getting `speech-to-text.huis` from design proposal 
 - [x] Mock OpenAI provider success and error responses.
 - [x] Verify request IDs appear in success and error responses.
 - [x] Add one manual curl test with a tiny WAV file.
-- [ ] Add one manual TalkToMe end-to-end test after the extension integration exists.
+- [x] Add one manual TalkToMe local API transcriber smoke after the extension integration exists.
+- [ ] Add one client-side TalkToMe UI end-to-end test after the extension is updated and its SecretStorage token is set.
 - [x] Confirm logs contain request metadata but not transcript text or secrets.
 
 ## 9. Tooling and Source Hygiene
@@ -194,6 +195,7 @@ This is the working list for getting `speech-to-text.huis` from design proposal 
   - no-speech skip behavior
 - [x] Add extension tests around provider selection and local API errors.
 - [x] Package a new TalkToMe `.vsix` for one-machine rollout.
+- [x] Publish TalkToMe `0.0.88` with private-CA support to the Huis extension feed.
 
 ## 11. Operational Docs
 
@@ -211,6 +213,7 @@ This is the working list for getting `speech-to-text.huis` from design proposal 
 - [x] Confirm local curl transcription works.
 - [x] Enable nginx HTTPS route.
 - [x] Create one TalkToMe client token.
+- [x] Run a live local API smoke from `vscode.huis` using TalkToMe's local transcriber module.
 - [ ] Switch one machine to `localApi`.
-- [ ] Monitor logs and latency.
+- [ ] Monitor logs and latency from a client-side TalkToMe UI recording.
 - [ ] Broaden to additional clients after one stable day of use.
