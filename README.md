@@ -1,8 +1,8 @@
 # Speech-to-Text Local API
 
-Status: design proposal, ready for implementation.
+Status: deployed on `speech-to-text.huis` and in first-client TalkToMe rollout.
 
-This service will extract the model communication boundary from the TalkToMe VS Code extension and expose it as a small local-network API. TalkToMe and other LAN clients will keep owning microphone capture, UI state, clipboard, paste, and submit behavior. This service will own only:
+This service extracts the model communication boundary from the TalkToMe VS Code extension and exposes it as a small local-network API. TalkToMe and other LAN clients keep owning microphone capture, UI state, clipboard, paste, and submit behavior. This service owns only:
 
 - accepting an audio file from a trusted local client;
 - enforcing size, timeout, and request validation rules;
@@ -11,7 +11,7 @@ This service will extract the model communication boundary from the TalkToMe VS 
 
 ## Why Extract This
 
-TalkToMe currently calls OpenAI directly from the extension host after recording audio. Centralizing that model call gives us:
+TalkToMe can call OpenAI directly from the extension host, but the rollout path is now the local API. Centralizing that model call gives us:
 
 - one place to store and rotate the OpenAI API key;
 - one API contract for TalkToMe and future clients;
@@ -107,20 +107,20 @@ Keep real secrets out of git. On the server, put runtime secrets in `/etc/speech
 
 ## Client Integration Plan
 
-TalkToMe 0.0.87 includes a local transcription mode:
+TalkToMe 0.0.88 includes local transcription mode and private Huis CA support:
 
 - `talkToMe.transcriptionProvider`: `openai` or `localApi`
 - `talkToMe.transcriptionEndpoint`: defaults to `https://speech-to-text.huis/v1/transcriptions`
 - `TalkToMe: Set Local Transcription API Key`: stores the client token in VS Code SecretStorage
 
-The extension keeps the current direct OpenAI path as the default fallback while the service is proven stable.
+The extension keeps the current direct OpenAI path as the fallback while the service is proven stable.
 
 ## Management Frontend
 
 The service includes a small operational admin UI at:
 
 ```text
-http://speech-to-text.huis:7077/admin
+https://speech-to-text.huis/admin
 ```
 
 Admin API calls require `Authorization: Bearer <ADMIN_API_TOKEN>`.
@@ -134,6 +134,16 @@ The UI can create, list, and revoke client tokens. Generated client tokens are d
 4. Add a systemd unit.
 5. Add TalkToMe local API support behind a setting.
 6. Switch one machine over, then broaden usage.
+
+## Rollout Status
+
+Run the server-side rollout checks with:
+
+```bash
+npm run rollout:status
+```
+
+This verifies service health, readiness, the configured transcription model, nginx and systemd state, the workspace TalkToMe settings, the Huis extension feed version, and recent transcription completion logs without printing tokens or transcript text.
 
 ## Server Bootstrap Notes
 

@@ -92,6 +92,14 @@ sudo /opt/speech-to-text/scripts/watch-transcriptions.sh "10 minutes ago"
 
 The watcher should show `duration_ms`, `provider`, `model`, and `transcript_logged:false`. It must not show client tokens, raw audio, or transcript text.
 
+For a one-shot server-side rollout check, run:
+
+```bash
+npm run rollout:status -- "10 minutes ago"
+```
+
+This checks service health, readiness, the expected model, nginx and systemd state, workspace TalkToMe settings, the Huis TalkToMe feed version, and a safe summary of recent transcription completion logs.
+
 ## TLS Renewal
 
 Renew the Huis CA certificate with:

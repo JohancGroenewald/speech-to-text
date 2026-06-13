@@ -17,6 +17,7 @@
     "lint:md": "markdownlint-cli2 \"**/*.md\" \"#node_modules\"",
     "lint:sh": "shellcheck scripts/*.sh",
     "lint:source-lines": "node scripts/check-source-lines.js",
+    "rollout:status": "bash scripts/rollout-status.sh",
     "validate": "npm run lint && npm test"
   },
   "repository": {

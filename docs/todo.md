@@ -206,6 +206,7 @@ This is the working list for getting `speech-to-text.huis` from design proposal 
 - [x] Document how to update Node dependencies.
 - [x] Document manual recovery if the admin UI is unavailable.
 - [x] Document backup needs for any client key store.
+- [x] Add a one-shot rollout status check for first-client TalkToMe verification.
 
 ## 12. Rollout
 

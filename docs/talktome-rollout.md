@@ -75,3 +75,12 @@ To watch the server while testing:
 ```bash
 sudo /opt/speech-to-text/scripts/watch-transcriptions.sh "10 minutes ago"
 ```
+
+For a one-shot status check before or after a client recording:
+
+```bash
+cd /opt/speech-to-text
+npm run rollout:status -- "10 minutes ago"
+```
+
+The status check reports only metadata such as request IDs, client IDs, duration, model, and `transcript_logged`; it does not print tokens or transcript text.
