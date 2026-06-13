@@ -4,7 +4,7 @@ set -uo pipefail
 service_url="${SPEECH_TO_TEXT_URL:-https://speech-to-text.huis}"
 registry_url="${TALKTOME_REGISTRY_URL:-http://vscode.huis}"
 talktome_package="${TALKTOME_PACKAGE:-talk-to-me}"
-expected_talktome_version="${EXPECTED_TALKTOME_VERSION:-0.0.88}"
+expected_talktome_version="${EXPECTED_TALKTOME_VERSION:-0.0.90}"
 expected_model="${EXPECTED_MODEL:-gpt-4o-transcribe}"
 since="${1:-10 minutes ago}"
 failed=0
