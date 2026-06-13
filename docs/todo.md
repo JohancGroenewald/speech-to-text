@@ -12,9 +12,9 @@ This is the working list for getting `speech-to-text.huis` from design proposal 
 - [x] Confirm `caserver.huis` and step-ca are reachable.
 - [x] Initialize Git repository and push initial documentation to GitHub.
 - [x] Store the early OpenAI test key outside the repository in `/opt/.env`.
-- [ ] Move runtime secrets from `/opt/.env` to `/etc/speech-to-text/speech-to-text.env`.
-- [ ] Create a dedicated `speech-to-text` Linux user and group.
-- [ ] Create service directories with correct ownership and permissions:
+- [x] Move runtime secrets from `/opt/.env` to `/etc/speech-to-text/speech-to-text.env`.
+- [x] Create a dedicated `speech-to-text` Linux user and group.
+- [x] Create service directories with correct ownership and permissions:
   - `/etc/speech-to-text`
   - `/var/lib/speech-to-text`
   - `/var/log/speech-to-text` if file logging is added
@@ -122,33 +122,33 @@ This is the working list for getting `speech-to-text.huis` from design proposal 
 
 ## 6. HTTPS and nginx
 
-- [ ] Obtain or issue a TLS certificate for `speech-to-text.huis` from the Huis CA.
-- [ ] Store nginx certificate material outside the repository.
-- [ ] Replace the default nginx site with a `speech-to-text.huis` server block.
-- [ ] Proxy API traffic to the Node service:
+- [x] Obtain or issue a TLS certificate for `speech-to-text.huis` from the Huis CA.
+- [x] Store nginx certificate material outside the repository.
+- [x] Replace the default nginx site with a `speech-to-text.huis` server block.
+- [x] Proxy API traffic to the Node service:
   - `/v1/transcriptions`
   - `/healthz`
   - `/readyz`
   - admin frontend routes
-- [ ] Set upload limits in nginx to match `MAX_AUDIO_BYTES`.
-- [ ] Set proxy timeouts above `REQUEST_TIMEOUT_MS`.
-- [ ] Verify `https://speech-to-text.huis` works from the LAN with the Huis root CA installed.
-- [ ] Decide whether direct `http://speech-to-text.huis:7077` remains available during testing only.
+- [x] Set upload limits in nginx to match `MAX_AUDIO_BYTES`.
+- [x] Set proxy timeouts above `REQUEST_TIMEOUT_MS`.
+- [x] Verify `https://speech-to-text.huis` works from the LAN with the Huis root CA installed.
+- [x] Decide whether direct `http://speech-to-text.huis:7077` remains available during testing only.
 
 ## 7. systemd Deployment
 
-- [ ] Add `/etc/systemd/system/speech-to-text.service`.
-- [ ] Run as `speech-to-text`, not root.
-- [ ] Use `EnvironmentFile=/etc/speech-to-text/speech-to-text.env`.
-- [ ] Set `WorkingDirectory=/opt/speech-to-text`.
-- [ ] Use `ExecStart=/usr/local/bin/node /opt/speech-to-text/src/server.js`.
-- [ ] Add hardening options:
+- [x] Add `/etc/systemd/system/speech-to-text.service`.
+- [x] Run as `speech-to-text`, not root.
+- [x] Use `EnvironmentFile=/etc/speech-to-text/speech-to-text.env`.
+- [x] Set `WorkingDirectory=/opt/speech-to-text`.
+- [x] Use `ExecStart=/usr/local/bin/node /opt/speech-to-text/src/server.js`.
+- [x] Add hardening options:
   - `NoNewPrivileges=true`
   - `PrivateTmp=true`
   - `ProtectSystem=strict` if compatible
-  - `ReadWritePaths=/var/lib/speech-to-text /etc/speech-to-text` if a key store is used
-- [ ] Enable and start the service.
-- [ ] Verify restart behavior and logs through `journalctl -u speech-to-text`.
+  - `ReadWritePaths=/var/lib/speech-to-text /var/log/speech-to-text` if a key store is used
+- [x] Enable and start the service.
+- [x] Verify restart behavior and logs through `journalctl -u speech-to-text`.
 
 ## 8. Test Plan
 
@@ -158,9 +158,9 @@ This is the working list for getting `speech-to-text.huis` from design proposal 
 - [x] Route-test missing file, bad MIME type, oversize file, and bad multipart requests.
 - [x] Mock OpenAI provider success and error responses.
 - [x] Verify request IDs appear in success and error responses.
-- [ ] Add one manual curl test with a tiny WAV file.
+- [x] Add one manual curl test with a tiny WAV file.
 - [ ] Add one manual TalkToMe end-to-end test after the extension integration exists.
-- [ ] Confirm logs contain request metadata but not transcript text or secrets.
+- [x] Confirm logs contain request metadata but not transcript text or secrets.
 
 ## 9. Tooling and Source Hygiene
 
@@ -195,20 +195,20 @@ This is the working list for getting `speech-to-text.huis` from design proposal 
 
 ## 11. Operational Docs
 
-- [ ] Document first-time setup.
-- [ ] Document service start, stop, restart, and log inspection.
-- [ ] Document how to create, revoke, and rotate client keys.
-- [ ] Document how to renew or replace the TLS certificate.
-- [ ] Document how to update Node dependencies.
-- [ ] Document manual recovery if the admin UI is unavailable.
-- [ ] Document backup needs for any client key store.
+- [x] Document first-time setup.
+- [x] Document service start, stop, restart, and log inspection.
+- [x] Document how to create, revoke, and rotate client keys.
+- [x] Document how to renew or replace the TLS certificate.
+- [x] Document how to update Node dependencies.
+- [x] Document manual recovery if the admin UI is unavailable.
+- [x] Document backup needs for any client key store.
 
 ## 12. Rollout
 
-- [ ] Deploy service manually on `speech-to-text.huis`.
-- [ ] Confirm local curl transcription works.
-- [ ] Enable nginx HTTPS route.
-- [ ] Create one TalkToMe client token.
+- [x] Deploy service manually on `speech-to-text.huis`.
+- [x] Confirm local curl transcription works.
+- [x] Enable nginx HTTPS route.
+- [x] Create one TalkToMe client token.
 - [ ] Switch one machine to `localApi`.
 - [ ] Monitor logs and latency.
 - [ ] Broaden to additional clients after one stable day of use.

@@ -82,6 +82,8 @@ Out of scope for the first implementation:
 
 - [API contract](docs/api-contract.md)
 - [Implementation plan](docs/implementation-plan.md)
+- [Deployment](docs/deployment.md)
+- [Operations](docs/operations.md)
 - [Project TODO](docs/todo.md)
 
 ## Configuration
@@ -153,6 +155,7 @@ git 2.43.0
 Smallstep step CLI 0.30.6
 jq 1.7
 nginx 1.24.0
+espeak-ng 1.51
 ```
 
 Base OS packages added for development and deployment:
@@ -168,14 +171,14 @@ gnupg
 nginx
 jq
 step-cli
+espeak-ng
 ```
 
 Local configuration state:
 
-- `/opt/.env` currently holds `OPENAI_API_KEY` for early testing and is mode `0600`.
-- `/opt/.env` is outside this Git repository and must not be committed.
-- Future service deployment should move runtime secrets into `/etc/speech-to-text/speech-to-text.env`.
-- Client API keys should be separate bearer tokens stored in `SPEECH_TO_TEXT_API_KEYS`; clients should not receive the OpenAI API key.
+- `/etc/speech-to-text/speech-to-text.env` holds runtime secrets and is mode `0640` for `root:speech-to-text`.
+- `/opt/.env` was used only for early testing and has been retired.
+- Client API keys are separate bearer tokens stored as hashes in `CLIENT_KEYS_FILE`; clients should not receive the OpenAI API key.
 
 CA and HTTPS state:
 

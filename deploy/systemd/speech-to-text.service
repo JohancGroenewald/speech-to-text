@@ -1,0 +1,22 @@
+[Unit]
+Description=Speech-to-Text LAN API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/speech-to-text
+EnvironmentFile=/etc/speech-to-text/speech-to-text.env
+ExecStart=/usr/local/bin/node /opt/speech-to-text/src/server.js
+Restart=on-failure
+RestartSec=3
+User=speech-to-text
+Group=speech-to-text
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/speech-to-text /var/log/speech-to-text
+
+[Install]
+WantedBy=multi-user.target
