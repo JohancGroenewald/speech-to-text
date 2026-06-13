@@ -78,7 +78,7 @@ This is the working list for getting `speech-to-text.huis` from design proposal 
 ## 4. Client API Keys
 
 - [x] Choose the first key-storage design before building the frontend.
-- [ ] Minimum viable option: `SPEECH_TO_TEXT_API_KEYS` in the systemd environment file.
+- [x] Supersede the minimum viable `SPEECH_TO_TEXT_API_KEYS` option with the hashed key store while keeping env-token support for tests/bootstrap.
 - [x] Better management option: root-owned JSON key store with hashed tokens, labels, creation dates, and revoked state.
 - [x] If using a key store, add config such as `CLIENT_KEYS_FILE=/etc/speech-to-text/client-keys.json`.
 - [x] Generate high-entropy client tokens.
@@ -86,7 +86,7 @@ This is the working list for getting `speech-to-text.huis` from design proposal 
 - [x] Store only hashed client tokens if the management frontend will support revoke/list flows.
 - [x] Support labels such as `talktome-johan-laptop` or `talktome-desktop`.
 - [x] Add key verification tests for valid, invalid, missing, and revoked tokens.
-- [ ] Document key rotation steps.
+- [x] Document key rotation steps.
 
 ## 5. Management Frontend
 

@@ -96,22 +96,23 @@ PORT=7077
 OPENAI_API_KEY=sk-...
 TRANSCRIPTION_MODEL=gpt-4o-transcribe
 SPEECH_TO_TEXT_API_KEYS=comma,separated,client,tokens
+CLIENT_KEYS_FILE=/var/lib/speech-to-text/client-keys.json
 MAX_AUDIO_BYTES=26214400
 REQUEST_TIMEOUT_MS=120000
 LOG_TRANSCRIPTS=false
 ```
 
-Keep real secrets out of git. On the server, put them in `/etc/speech-to-text/speech-to-text.env` or a systemd environment file readable only by root.
+Keep real secrets out of git. On the server, put runtime secrets in `/etc/speech-to-text/speech-to-text.env`, readable by root and the service group only. The deployed service uses `CLIENT_KEYS_FILE` for managed, hashed client tokens; `SPEECH_TO_TEXT_API_KEYS` is still useful for simple local tests.
 
 ## Client Integration Plan
 
-TalkToMe should get a new transcription mode:
+TalkToMe 0.0.87 includes a local transcription mode:
 
 - `talkToMe.transcriptionProvider`: `openai` or `localApi`
-- `talkToMe.transcriptionEndpoint`: default empty, example `http://speech-to-text.huis:7077/v1/transcriptions`
-- `talkToMe.transcriptionApiKey`: ideally SecretStorage, not plain settings
+- `talkToMe.transcriptionEndpoint`: defaults to `https://speech-to-text.huis/v1/transcriptions`
+- `TalkToMe: Set Local Transcription API Key`: stores the client token in VS Code SecretStorage
 
-The extension should keep the current direct OpenAI path as a fallback until the service has been proven stable.
+The extension keeps the current direct OpenAI path as the default fallback while the service is proven stable.
 
 ## Management Frontend
 

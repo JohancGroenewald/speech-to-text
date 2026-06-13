@@ -3,7 +3,7 @@
 Base URL for the LAN service:
 
 ```text
-http://speech-to-text.huis:7077
+https://speech-to-text.huis
 ```
 
 ## Authentication
@@ -14,7 +14,9 @@ Every transcription request must include:
 Authorization: Bearer <client-token>
 ```
 
-The server validates the token against `SPEECH_TO_TEXT_API_KEYS`.
+The server validates the token against the configured client key sources. The deployed service uses a hashed JSON key store at `CLIENT_KEYS_FILE`; `SPEECH_TO_TEXT_API_KEYS` remains supported as a simple bootstrap or test source.
+
+Create, list, revoke, and rotate client tokens through the admin UI. Generated client tokens are shown once, then only their hashes are stored.
 
 Health routes may stay unauthenticated while the service is LAN-only. If exposed through a reverse proxy, require authentication there too.
 
@@ -96,7 +98,7 @@ curl -sS \
   -H "Authorization: Bearer $SPEECH_TO_TEXT_CLIENT_KEY" \
   -F "file=@sample.wav;type=audio/wav" \
   -F "language=en" \
-  http://speech-to-text.huis:7077/v1/transcriptions
+  https://speech-to-text.huis/v1/transcriptions
 ```
 
 ## GET /healthz
