@@ -43,6 +43,25 @@ settings_value() {
   ' "$key" 2>/dev/null || true
 }
 
+private_registry_name() {
+  node -e '
+    const fs = require("node:fs");
+    const config = JSON.parse(fs.readFileSync(".vscode/extensions.private.json", "utf8"));
+    const registry = process.argv[1];
+    const found = (config.registries || []).find((entry) => entry.registry === registry);
+    process.stdout.write(found ? (found.name || found.registry) : "");
+  ' "$registry_url" 2>/dev/null || true
+}
+
+has_talktome_recommendation() {
+  node -e '
+    const fs = require("node:fs");
+    const config = JSON.parse(fs.readFileSync(".vscode/extensions.private.json", "utf8"));
+    const recommendations = config.recommendations || [];
+    process.stdout.write(recommendations.includes("johancgroenewald.talk-to-me") ? "yes" : "");
+  ' 2>/dev/null || true
+}
+
 section "Speech-to-text rollout status"
 printf 'Service URL: %s\n' "$service_url"
 printf 'TalkToMe registry: %s\n' "$registry_url"
@@ -111,6 +130,23 @@ if [ -f ".vscode/settings.json" ]; then
   fi
 else
   fail ".vscode/settings.json is missing"
+fi
+
+if [ -f ".vscode/extensions.private.json" ]; then
+  registry_name="$(private_registry_name)"
+  if [ -n "$registry_name" ]; then
+    ok "workspace private extension registry includes ${registry_url} (${registry_name})"
+  else
+    fail "workspace private extension registry does not include ${registry_url}"
+  fi
+
+  if [ "$(has_talktome_recommendation)" = "yes" ]; then
+    ok "workspace recommends johancgroenewald.talk-to-me"
+  else
+    fail "workspace does not recommend johancgroenewald.talk-to-me"
+  fi
+else
+  fail ".vscode/extensions.private.json is missing"
 fi
 
 section "TalkToMe feed"

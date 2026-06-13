@@ -16,6 +16,8 @@ The feed should show:
 JohancGroenewald.talk-to-me 0.0.88
 ```
 
+This workspace includes `.vscode/extensions.private.json`, so VS Code clients with `garmin.private-extension-manager` installed should discover the Huis feed when the workspace opens.
+
 ## Configure Local API Mode
 
 Set these TalkToMe settings on the client machine or workspace:

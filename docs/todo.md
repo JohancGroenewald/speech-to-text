@@ -216,6 +216,7 @@ This is the working list for getting `speech-to-text.huis` from design proposal 
 - [x] Create one TalkToMe client token.
 - [x] Run a live local API smoke from `vscode.huis` using TalkToMe's local transcriber module.
 - [x] Preconfigure this workspace for TalkToMe `localApi` using `.vscode/settings.json`.
+- [x] Preconfigure this workspace with the Huis private extension feed for TalkToMe discovery.
 - [ ] Switch one machine to `localApi`.
 - [ ] Monitor logs and latency from a client-side TalkToMe UI recording.
 - [ ] Broaden to additional clients after one stable day of use.

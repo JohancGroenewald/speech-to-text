@@ -1,0 +1,11 @@
+{
+  "registries": [
+    {
+      "name": "Huis Extensions",
+      "registry": "http://vscode.huis"
+    }
+  ],
+  "recommendations": [
+    "johancgroenewald.talk-to-me"
+  ]
+}
