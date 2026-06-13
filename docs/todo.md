@@ -198,6 +198,7 @@ This is the working list for getting `speech-to-text.huis` from design proposal 
 - [x] Add extension tests around provider selection and local API errors.
 - [x] Package a new TalkToMe `.vsix` for one-machine rollout.
 - [x] Publish TalkToMe `0.0.88` with private-CA support to the Huis extension feed.
+- [x] Publish TalkToMe `0.0.90` with provider-aware key UI so `localApi` mode checks the local token instead of the OpenAI key.
 
 ## 11. Operational Docs
 
@@ -218,6 +219,7 @@ This is the working list for getting `speech-to-text.huis` from design proposal 
 - [x] Create one TalkToMe client token.
 - [x] Run a live local API smoke from `vscode.huis` using TalkToMe's local transcriber module.
 - [x] Preconfigure this workspace for TalkToMe `localApi` using `.vscode/settings.json`.
+- [x] Preconfigure `/opt/speech-to-text.code-workspace` for TalkToMe `localApi` so the active VS Code workspace uses the local provider settings.
 - [x] Preconfigure this workspace with the Huis private extension feed for TalkToMe discovery.
 - [ ] Switch one machine to `localApi`.
 - [ ] Monitor logs and latency from a client-side TalkToMe UI recording.
