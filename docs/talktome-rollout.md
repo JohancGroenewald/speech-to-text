@@ -37,6 +37,8 @@ If the VS Code extension host does not trust the Huis root CA, also set a PEM fi
 
 The Linux path above works on `vscode.huis`. On Windows or macOS, use the path where the Huis root CA PEM is stored on that client.
 
+This repository includes `.vscode/settings.json` with the Linux `vscode.huis` values already set. Opening this workspace with TalkToMe `0.0.88` should therefore select `localApi` automatically; the token still has to be stored through SecretStorage.
+
 ## Store The Client Token
 
 Run this command from VS Code:

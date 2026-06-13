@@ -1,0 +1,5 @@
+{
+  "talkToMe.transcriptionProvider": "localApi",
+  "talkToMe.transcriptionEndpoint": "https://speech-to-text.huis/v1/transcriptions",
+  "talkToMe.transcriptionCaFile": "/etc/ssl/certs/huis-root-ca.pem"
+}
