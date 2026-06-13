@@ -176,21 +176,23 @@ This is the working list for getting `speech-to-text.huis` from design proposal 
 
 ## 10. TalkToMe Integration
 
-- [ ] Add `TalkToMe/src/transcription/localApiTranscriber.js`.
-- [ ] Add settings:
+- [x] Add `TalkToMe/src/transcription/localApiTranscriber.js`.
+- [x] Add settings:
   - `talkToMe.transcriptionProvider`
   - `talkToMe.transcriptionEndpoint`
-  - `talkToMe.transcriptionApiKey`
-- [ ] Store the local API key in VS Code SecretStorage.
-- [ ] Keep direct OpenAI transcription as a fallback while proving the service.
-- [ ] Preserve current TalkToMe behavior for:
+- [x] Add local API key commands:
+  - `talkToMe.setTranscriptionApiKey`
+  - `talkToMe.clearTranscriptionApiKey`
+- [x] Store the local API key in VS Code SecretStorage.
+- [x] Keep direct OpenAI transcription as a fallback while proving the service.
+- [x] Preserve current TalkToMe behavior for:
   - local audio size rejection
   - language hint
   - transcript append
   - clipboard copy
   - paste and submit workflow
   - no-speech skip behavior
-- [ ] Add extension tests around provider selection and local API errors.
+- [x] Add extension tests around provider selection and local API errors.
 - [ ] Package a new TalkToMe `.vsix` for one-machine rollout.
 
 ## 11. Operational Docs
