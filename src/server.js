@@ -76,6 +76,14 @@ function buildServer({
     service: 'speech-to-text'
   }));
 
+  app.get('/', async (_request, reply) => {
+    reply.redirect('/admin');
+  });
+
+  app.get('/favicon.ico', async (_request, reply) => {
+    reply.status(204).send();
+  });
+
   app.get('/readyz', async (request, reply) => {
     const readiness = getReadiness(config);
     if (!readiness.ok) {

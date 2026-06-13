@@ -75,6 +75,22 @@ test('readyz reports missing provider key', async () => {
   assert.equal(response.json().error.code, 'missing_provider_key');
 });
 
+test('root route redirects to admin frontend', async () => {
+  const app = createTestServer();
+  const response = await app.inject({ method: 'GET', url: '/' });
+
+  assert.equal(response.statusCode, 302);
+  assert.equal(response.headers.location, '/admin');
+});
+
+test('favicon route returns no content', async () => {
+  const app = createTestServer();
+  const response = await app.inject({ method: 'GET', url: '/favicon.ico' });
+
+  assert.equal(response.statusCode, 204);
+  assert.equal(response.body, '');
+});
+
 test('config parser applies defaults and validates numeric values', () => {
   const config = parseConfig({
     OPENAI_API_KEY: 'sk-test',
