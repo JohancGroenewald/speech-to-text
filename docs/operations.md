@@ -84,6 +84,14 @@ rm -rf "$tmpdir"
 
 The response should include `model: "gpt-4o-transcribe"` and a transcript.
 
+Watch transcription latency and metadata during a client rollout:
+
+```bash
+sudo /opt/speech-to-text/scripts/watch-transcriptions.sh "10 minutes ago"
+```
+
+The watcher should show `duration_ms`, `provider`, `model`, and `transcript_logged:false`. It must not show client tokens, raw audio, or transcript text.
+
 ## TLS Renewal
 
 Renew the Huis CA certificate with:

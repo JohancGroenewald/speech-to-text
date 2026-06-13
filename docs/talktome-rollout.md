@@ -67,3 +67,9 @@ transcript_logged: false
 ```
 
 If TalkToMe reports a TLS issuer error, confirm `talkToMe.transcriptionCaFile` points to a readable Huis root CA PEM file on the client.
+
+To watch the server while testing:
+
+```bash
+sudo /opt/speech-to-text/scripts/watch-transcriptions.sh "10 minutes ago"
+```
