@@ -5,6 +5,7 @@ const multipart = require('@fastify/multipart');
 const { registerAdminRoutes } = require('./admin/routes');
 const { createClientKeyManager } = require('./auth/clientKeys');
 const { getReadiness, loadEnvFileIfPresent, parseConfig } = require('./config');
+const { registerDiscoveryRoutes } = require('./discovery/routes');
 const {
   ApiError,
   audioTooLarge,
@@ -80,6 +81,8 @@ function buildServer({
       }
     });
   });
+
+  registerDiscoveryRoutes(app);
 
   app.get('/healthz', async () => ({
     ok: true,

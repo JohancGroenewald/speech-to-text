@@ -1,7 +1,7 @@
 # Project TODO
 
 Status: first implementation checklist.
-Last updated: 2026-06-13.
+Last updated: 2026-06-20.
 
 This is the working list for getting `speech-to-text.huis` from design proposal to a running LAN service with a small management frontend.
 
@@ -74,6 +74,7 @@ This is the working list for getting `speech-to-text.huis` from design proposal 
 - [x] Return stable JSON responses with `request_id`.
 - [x] Map provider errors to documented API error codes.
 - [x] Reject empty transcript responses with `422 empty_transcript`.
+- [x] Publish `/llms.txt`, `/llms-full.txt`, and `/openapi.json` discovery endpoints for local model and tool clients.
 
 ## 4. Client API Keys
 

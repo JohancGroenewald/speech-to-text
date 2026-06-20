@@ -87,6 +87,18 @@ Out of scope for the first implementation:
 - [TalkToMe rollout](docs/talktome-rollout.md)
 - [Project TODO](docs/todo.md)
 
+## LLM and Client Discovery
+
+Local models and tool agents can start from these public discovery endpoints:
+
+```text
+https://speech-to-text.huis/llms.txt
+https://speech-to-text.huis/llms-full.txt
+https://speech-to-text.huis/openapi.json
+```
+
+`llms.txt` gives a concise usage guide, `llms-full.txt` adds operational details and agent behavior notes, and `openapi.json` exposes the machine-readable API contract. Transcription and admin operations still require bearer tokens.
+
 ## Configuration
 
 The service should read configuration from environment variables:

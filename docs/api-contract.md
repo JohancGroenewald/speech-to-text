@@ -6,6 +6,18 @@ Base URL for the LAN service:
 https://speech-to-text.huis
 ```
 
+## Discovery
+
+Local models, tool agents, and API clients can bootstrap from:
+
+```text
+GET /llms.txt       concise LLM-oriented usage guide
+GET /llms-full.txt  detailed LLM-oriented usage guide
+GET /openapi.json   OpenAPI 3.1 schema
+```
+
+These discovery routes are public on the LAN. They do not expose secrets and do not authorize transcription or admin actions.
+
 ## Authentication
 
 Every transcription request must include:
@@ -48,11 +60,14 @@ Supported first-pass audio types:
 
 ```text
 audio/wav
+audio/wave
+audio/x-wav
 audio/webm
 audio/mp4
 audio/mpeg
 audio/mp3
 audio/m4a
+audio/x-m4a
 audio/mpga
 ```
 
