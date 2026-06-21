@@ -1,4 +1,6 @@
 const crypto = require('node:crypto');
+const fs = require('node:fs/promises');
+const path = require('node:path');
 const Fastify = require('fastify');
 const multipart = require('@fastify/multipart');
 
@@ -14,6 +16,8 @@ const {
   unsupportedMedia
 } = require('./errors');
 const { transcribeWithOpenAI } = require('./transcribers/openai');
+
+const FAVICON_PATH = path.join(__dirname, 'assets', 'favicon.png');
 
 const SUPPORTED_AUDIO_TYPES = new Set([
   'audio/wav',
@@ -94,7 +98,11 @@ function buildServer({
   });
 
   app.get('/favicon.ico', async (_request, reply) => {
-    reply.status(204).send();
+    return sendFavicon(reply);
+  });
+
+  app.get('/favicon.png', async (_request, reply) => {
+    return sendFavicon(reply);
   });
 
   app.get('/readyz', async (request, reply) => {
@@ -175,6 +183,12 @@ function buildServer({
   registerAdminRoutes(app, { config, keyManager, logReader: adminLogReader });
 
   return app;
+}
+
+async function sendFavicon(reply) {
+  const favicon = await fs.readFile(FAVICON_PATH);
+  reply.type('image/png');
+  return favicon;
 }
 
 function authenticateClient(keyManager) {

@@ -85,12 +85,13 @@ test('root route redirects to admin frontend', async () => {
   assert.equal(response.headers.location, '/admin');
 });
 
-test('favicon route returns no content', async () => {
+test('favicon route returns the site icon', async () => {
   const app = createTestServer();
   const response = await app.inject({ method: 'GET', url: '/favicon.ico' });
 
-  assert.equal(response.statusCode, 204);
-  assert.equal(response.body, '');
+  assert.equal(response.statusCode, 200);
+  assert.match(response.headers['content-type'], /image\/png/);
+  assert.ok(response.rawPayload.length > 0);
 });
 
 test('config parser applies defaults and validates numeric values', () => {
@@ -326,6 +327,7 @@ test('serves the admin frontend shell', async () => {
   assert.equal(response.statusCode, 200);
   assert.match(response.headers['content-type'], /text\/html/);
   assert.match(response.body, /Speech-to-Text Admin/);
+  assert.match(response.body, /rel="icon" type="image\/png" href="\/favicon\.png"/);
   assert.match(response.body, /themeToggle/);
   assert.match(response.body, /TalkToMe Settings/);
   assert.match(response.body, /Client Logs/);
