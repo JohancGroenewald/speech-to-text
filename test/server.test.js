@@ -92,6 +92,7 @@ test('favicon route returns the site icon', async () => {
   assert.equal(response.statusCode, 200);
   assert.match(response.headers['content-type'], /image\/png/);
   assert.ok(response.rawPayload.length > 0);
+  assert.equal(response.rawPayload[25], 6);
 });
 
 test('config parser applies defaults and validates numeric values', () => {
