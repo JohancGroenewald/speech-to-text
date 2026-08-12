@@ -245,5 +245,6 @@ This is the working list for getting `speech-to-text.huis` from design proposal 
 - [x] Correct multipart count-limit error classification.
 - [x] Add direct provider-adapter and edge-case regression tests.
 - [x] Reconcile README, API, deployment, operations, architecture, rollout, and tracker documentation.
-- [ ] Commit and deploy the reviewed service and nginx changes.
-- [ ] Restart the Node service, reload nginx, and run live health, readiness, smoke, and rollout checks.
+- [x] Align the rollout check with the TalkToMe `0.0.93` feed release.
+- [x] Commit and deploy the reviewed service and nginx changes.
+- [x] Restart the Node service, reload nginx, and run live health, readiness, smoke, and rollout checks.
