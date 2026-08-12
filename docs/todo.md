@@ -1,7 +1,8 @@
 # Project TODO
 
-Status: first implementation checklist.
-Last updated: 2026-06-20.
+Status: core implementation complete; first-client rollout and deployment of
+the latest reliability changes still need live verification.
+Last updated: 2026-08-12.
 
 This is the working list for getting `speech-to-text.huis` from design proposal to a running LAN service with a small management frontend.
 
@@ -40,7 +41,8 @@ This is the working list for getting `speech-to-text.huis` from design proposal 
 - [x] Parse and validate environment variables in `src/config.js`.
 - [x] Required config:
   - `OPENAI_API_KEY`
-  - `SPEECH_TO_TEXT_API_KEYS` or a client key store path
+  - at least one `SPEECH_TO_TEXT_API_KEYS` token or an active managed key
+  - `ADMIN_API_TOKEN`
 - [x] Defaults:
   - `HOST=127.0.0.1` when behind nginx, or `0.0.0.0` for direct LAN testing
   - `PORT=7077`
@@ -48,7 +50,7 @@ This is the working list for getting `speech-to-text.huis` from design proposal 
   - `MAX_AUDIO_BYTES=26214400`
   - `REQUEST_TIMEOUT_MS=120000`
   - `LOG_TRANSCRIPTS=false`
-- [x] Make `/readyz` fail clearly when required provider config is missing.
+- [x] Make `/readyz` validate provider, client-key, key-store, and admin config.
 - [x] Ensure logs never print `OPENAI_API_KEY`, client tokens, raw audio, or transcript text by default.
 
 ## 3. Transcription API
@@ -80,13 +82,15 @@ This is the working list for getting `speech-to-text.huis` from design proposal 
 
 - [x] Choose the first key-storage design before building the frontend.
 - [x] Supersede the minimum viable `SPEECH_TO_TEXT_API_KEYS` option with the hashed key store while keeping env-token support for tests/bootstrap.
-- [x] Better management option: root-owned JSON key store with hashed tokens, labels, creation dates, and revoked state.
-- [x] If using a key store, add config such as `CLIENT_KEYS_FILE=/etc/speech-to-text/client-keys.json`.
+- [x] Use a service-owned JSON key store with hashed tokens, labels, creation dates, and revoked state.
+- [x] If using a key store, add config such as `CLIENT_KEYS_FILE=/var/lib/speech-to-text/client-keys.json`.
 - [x] Generate high-entropy client tokens.
 - [x] Display full client tokens only once at creation time.
 - [x] Store only hashed client tokens if the management frontend will support revoke/list flows.
 - [x] Support labels such as `talktome-johan-laptop` or `talktome-desktop`.
 - [x] Add key verification tests for valid, invalid, missing, and revoked tokens.
+- [x] Batch `last_used_at` persistence without making authentication depend on it.
+- [x] Serialize create and revoke operations and wait for key-store persistence.
 - [x] Document key rotation steps.
 
 ## 5. Management Frontend
@@ -109,7 +113,6 @@ This is the working list for getting `speech-to-text.huis` from design proposal 
   - revoke action
 - [x] Add a simple diagnostics panel:
   - Node version
-  - service version or Git SHA
   - provider model
   - max upload size
   - request timeout
@@ -131,7 +134,7 @@ This is the working list for getting `speech-to-text.huis` from design proposal 
   - `/healthz`
   - `/readyz`
   - admin frontend routes
-- [x] Set upload limits in nginx to match `MAX_AUDIO_BYTES`.
+- [x] Set nginx's request limit above `MAX_AUDIO_BYTES` for multipart overhead.
 - [x] Set proxy timeouts above `REQUEST_TIMEOUT_MS`.
 - [x] Verify `https://speech-to-text.huis` works from the LAN with the Huis root CA installed.
 - [x] Decide whether direct `http://speech-to-text.huis:7077` remains available during testing only.
@@ -158,6 +161,7 @@ This is the working list for getting `speech-to-text.huis` from design proposal 
 - [x] Route-test health and readiness.
 - [x] Route-test missing file, bad MIME type, oversize file, and bad multipart requests.
 - [x] Mock OpenAI provider success and error responses.
+- [x] Directly test OpenAI request construction, response parsing, network errors, and timeout handling.
 - [x] Verify request IDs appear in success and error responses.
 - [x] Add one manual curl test with a tiny WAV file.
 - [x] Add one manual TalkToMe local API transcriber smoke after the extension integration exists.
@@ -165,6 +169,8 @@ This is the working list for getting `speech-to-text.huis` from design proposal 
 - [x] Confirm logs contain request metadata but not transcript text or secrets.
 - [x] Add per-client request, audio input, and response metadata logs.
 - [x] Expose sanitized recent client logs in the admin panel.
+- [x] Test trusted loopback proxy addresses and reject spoofed forwarding headers from other peers.
+- [x] Test multipart file/field limit errors as `400 invalid_request`.
 
 ## 9. Tooling and Source Hygiene
 
@@ -227,3 +233,17 @@ This is the working list for getting `speech-to-text.huis` from design proposal 
 - [ ] Switch one machine to `localApi`.
 - [ ] Monitor logs and latency from a client-side TalkToMe UI recording.
 - [ ] Broaden to additional clients after one stable day of use.
+
+## 13. Reliability Review Follow-Up
+
+- [x] Align `CLIENT_KEYS_FILE` defaults with systemd writable paths.
+- [x] Reject partial numeric configuration values such as `120000ms`.
+- [x] Validate that the managed key store is readable, structured, and has an active key.
+- [x] Make usage-metadata persistence asynchronous, batched, and non-blocking for authentication.
+- [x] Trust nginx forwarding headers only from loopback peers.
+- [x] Reserve nginx request overhead above the 25 MiB audio-file limit.
+- [x] Correct multipart count-limit error classification.
+- [x] Add direct provider-adapter and edge-case regression tests.
+- [x] Reconcile README, API, deployment, operations, architecture, rollout, and tracker documentation.
+- [ ] Commit and deploy the reviewed service and nginx changes.
+- [ ] Restart the Node service, reload nginx, and run live health, readiness, smoke, and rollout checks.

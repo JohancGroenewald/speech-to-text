@@ -1,6 +1,8 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
+const { inspectClientKeyStore } = require('./auth/clientKeys');
+
 const DEFAULTS = {
   HOST: '127.0.0.1',
   PORT: '7077',
@@ -8,7 +10,7 @@ const DEFAULTS = {
   MAX_AUDIO_BYTES: '26214400',
   REQUEST_TIMEOUT_MS: '120000',
   LOG_TRANSCRIPTS: 'false',
-  CLIENT_KEYS_FILE: '/etc/speech-to-text/client-keys.json'
+  CLIENT_KEYS_FILE: '/var/lib/speech-to-text/client-keys.json'
 };
 
 function loadEnvFileIfPresent(filePath = process.env.ENV_FILE || '/opt/.env') {
@@ -57,7 +59,7 @@ function parseConfig(env = process.env) {
   };
 }
 
-function getReadiness(config) {
+async function getReadiness(config) {
   const missing = [];
   if (!config.openaiApiKey) {
     missing.push({
@@ -65,11 +67,21 @@ function getReadiness(config) {
       message: 'OPENAI_API_KEY is not configured.'
     });
   }
-  if (config.clientApiKeys.length === 0 && !fs.existsSync(config.clientKeysFile)) {
-    missing.push({
-      code: 'missing_client_keys',
-      message: 'No client API keys are configured.'
-    });
+  if (config.clientApiKeys.length === 0) {
+    const keyStore = await inspectClientKeyStore(config.clientKeysFile);
+    if (!keyStore.ok) {
+      missing.push(
+        keyStore.error
+          ? {
+              code: 'invalid_client_keys',
+              message: 'The client key store is unreadable or invalid.'
+            }
+          : {
+              code: 'missing_client_keys',
+              message: 'No active client API keys are configured.'
+            }
+      );
+    }
   }
   if (!config.adminApiToken) {
     missing.push({
@@ -91,8 +103,9 @@ function parseList(value) {
 }
 
 function parseInteger(value, name, { min = Number.MIN_SAFE_INTEGER, max = Number.MAX_SAFE_INTEGER }) {
-  const parsed = Number.parseInt(String(value), 10);
-  if (!Number.isInteger(parsed) || parsed < min || parsed > max) {
+  const normalized = String(value).trim();
+  const parsed = Number(normalized);
+  if (!/^[+-]?\d+$/.test(normalized) || !Number.isSafeInteger(parsed) || parsed < min || parsed > max) {
     throw new Error(`${name} must be an integer between ${min} and ${max}.`);
   }
   return parsed;

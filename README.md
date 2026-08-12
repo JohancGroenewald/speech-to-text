@@ -1,232 +1,176 @@
 # Speech-to-Text Local API
 
-Status: deployed on `speech-to-text.huis` and in first-client TalkToMe rollout.
+Deployment target: `speech-to-text.huis` on the trusted Huis LAN. The repository
+rollout target is TalkToMe `0.0.92`; use `npm run rollout:status` to verify live
+service and extension-feed state.
 
-This service extracts the model communication boundary from the TalkToMe VS Code extension and exposes it as a small local-network API. TalkToMe and other LAN clients keep owning microphone capture, UI state, clipboard, paste, and submit behavior. This service owns only:
+This Node.js service accepts an authenticated audio upload, sends it to the
+server-configured transcription provider, and returns transcript JSON. TalkToMe
+and other clients continue to own microphone capture, UI state, clipboard,
+paste, and submit behavior.
 
-- accepting an audio file from a trusted local client;
-- enforcing size, timeout, and request validation rules;
-- sending the audio to the configured transcription model;
-- returning the transcript as JSON.
-
-## Why Extract This
-
-TalkToMe can call OpenAI directly from the extension host, but the rollout path is now the local API. Centralizing that model call gives us:
-
-- one place to store and rotate the OpenAI API key;
-- one API contract for TalkToMe and future clients;
-- one logging and diagnostics surface for transcription failures;
-- the option to swap transcription providers later without changing every client;
-- simpler client installs because desktop machines no longer need an OpenAI key.
-
-## Recommended Shape
-
-Use a small Node.js HTTP service on `speech-to-text.huis`.
-
-Reasoning:
-
-- TalkToMe is already JavaScript and its existing OpenAI transcription code can be moved with minimal behavior drift.
-- Node 20+ has stable `fetch`, `FormData`, `Blob`, and `File` APIs, so the service can forward multipart audio cleanly.
-- Fastify gives simple request-size limits, logging hooks, schema validation, and health routes without much ceremony.
-
-Python/FastAPI would also work, but it would duplicate the current JavaScript transcriber and make TalkToMe/service parity more work.
-
-## Scope Boundaries
-
-In scope:
-
-- `POST /v1/transcriptions`
-- `GET /healthz`
-- `GET /readyz`
-- API-key based LAN authentication
-- OpenAI `gpt-4o-transcribe` as the first provider
-- request size limit aligned with OpenAI's 25 MB audio limit
-- structured logs that do not include raw audio or transcript text by default
-
-Out of scope for the first implementation:
-
-- microphone capture on the server
-- paste or keyboard automation
-- transcript history storage
-- speaker diarization
-- streaming transcription
-- public internet exposure
-
-## Initial Directory Layout
+## Architecture
 
 ```text
-/opt/speech-to-text
-  README.md
-  docs/
-    api-contract.md
-    implementation-plan.md
-    todo.md
-  scripts/
-    check-syntax.js
-  src/
-    server.js
-    config.js
-    errors.js
-    auth/
-      clientKeys.js
-    transcribers/
-      openai.js
-  test/
-    clientKeys.test.js
-    server.test.js
-  .env.example
-  package.json
+TalkToMe or another LAN client
+  -> HTTPS nginx on speech-to-text.huis:443
+  -> Fastify on 127.0.0.1:7077
+  -> OpenAI /v1/audio/transcriptions
 ```
 
-## Documentation
+The service also provides public LAN discovery and health routes plus a
+separately authenticated admin API and browser UI. It is not intended for
+public-internet exposure.
 
-- [API contract](docs/api-contract.md)
-- [Implementation plan](docs/implementation-plan.md)
-- [Deployment](docs/deployment.md)
-- [Operations](docs/operations.md)
-- [TalkToMe rollout](docs/talktome-rollout.md)
-- [Project TODO](docs/todo.md)
+The service owns:
 
-## LLM and Client Discovery
+- bearer-token authentication for transcription clients;
+- multipart, MIME-type, file-size, and field validation;
+- the OpenAI request and timeout boundary;
+- stable success and error response shapes;
+- client-token lifecycle management;
+- metadata-only operational logging by default.
 
-Local models and tool agents can start from these public discovery endpoints:
+## API Summary
+
+- `POST /v1/transcriptions` transcribes one authenticated audio file.
+- `GET /healthz` reports process liveness.
+- `GET /readyz` validates required local configuration without calling OpenAI.
+- `GET /llms.txt`, `GET /llms-full.txt`, and `GET /openapi.json` provide public
+  LAN discovery.
+- `GET /admin` serves the operator UI.
+- `/admin/api/*` provides separately authenticated status, client-key, and log
+  operations.
+
+The default audio-file limit is 25 MiB (`26214400` bytes). nginx allows a 26 MiB
+request body so normal multipart framing fits around a maximum-size file.
+
+See [the API contract](docs/api-contract.md) for request and response details.
+
+## Repository Layout
 
 ```text
-https://speech-to-text.huis/llms.txt
-https://speech-to-text.huis/llms-full.txt
-https://speech-to-text.huis/openapi.json
+deploy/                 nginx and systemd definitions
+docs/                   API, deployment, operations, and rollout guides
+scripts/                validation, certificate, log, and rollout helpers
+src/
+  admin/                admin UI, API routes, and sanitized journal reader
+  auth/clientKeys.js    hashed client-token store and verification
+  discovery/            llms.txt and OpenAPI documents
+  transcribers/openai.js
+  config.js
+  errors.js
+  server.js
+test/                   route, key-store, config, discovery, and provider tests
 ```
 
-`llms.txt` gives a concise usage guide, `llms-full.txt` adds operational details and agent behavior notes, and `openapi.json` exposes the machine-readable API contract. Transcription and admin operations still require bearer tokens.
+## Requirements and Local Validation
+
+Use Node.js 20 or newer. The full validation gate also expects ShellCheck,
+nginx, and `systemd-analyze` on the host. Install the locked dependency set and
+run:
+
+```bash
+npm ci
+npm run validate
+```
+
+For local development, copy the non-secret template, fill the required secrets
+and at least one client-token source, then explicitly point the process at it:
+
+```bash
+cp .env.example .env
+ENV_FILE=.env npm start
+```
+
+`.env` files are ignored by Git. The deployed service reads
+`/etc/speech-to-text/speech-to-text.env` through systemd instead.
+
+For non-root local admin-key testing, change `CLIENT_KEYS_FILE` in `.env` to a
+writable ignored path such as `./tmp/client-keys.json`.
 
 ## Configuration
 
-The service should read configuration from environment variables:
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `HOST` | `127.0.0.1` | Fastify listen address; keep loopback when using nginx. |
+| `PORT` | `7077` | Fastify listen port. |
+| `OPENAI_API_KEY` | none | Required provider credential. |
+| `TRANSCRIPTION_MODEL` | `gpt-4o-transcribe` | Server-controlled model. |
+| `SPEECH_TO_TEXT_API_KEYS` | none | Optional comma-separated bootstrap/test client tokens. |
+| `CLIENT_KEYS_FILE` | `/var/lib/speech-to-text/client-keys.json` | Managed hashed client-token store. |
+| `ADMIN_API_TOKEN` | none | Required admin API credential. |
+| `MAX_AUDIO_BYTES` | `26214400` | Maximum audio-file size in bytes. |
+| `REQUEST_TIMEOUT_MS` | `120000` | Provider request timeout. |
+| `LOG_TRANSCRIPTS` | `false` | Explicit opt-in for transcript text in service logs. |
 
-```text
-HOST=0.0.0.0
-PORT=7077
-OPENAI_API_KEY=sk-...
-TRANSCRIPTION_MODEL=gpt-4o-transcribe
-SPEECH_TO_TEXT_API_KEYS=comma,separated,client,tokens
-CLIENT_KEYS_FILE=/var/lib/speech-to-text/client-keys.json
-MAX_AUDIO_BYTES=26214400
-REQUEST_TIMEOUT_MS=120000
-LOG_TRANSCRIPTS=false
-```
+`PORT`, `MAX_AUDIO_BYTES`, and `REQUEST_TIMEOUT_MS` must be complete decimal
+integers; values with unit suffixes are rejected.
 
-Keep real secrets out of git. On the server, put runtime secrets in `/etc/speech-to-text/speech-to-text.env`, readable by root and the service group only. The deployed service uses `CLIENT_KEYS_FILE` for managed, hashed client tokens; `SPEECH_TO_TEXT_API_KEYS` is still useful for simple local tests.
+Readiness requires:
 
-## Client Integration Plan
+- `OPENAI_API_KEY`;
+- at least one client token from `SPEECH_TO_TEXT_API_KEYS` or one active,
+  valid record in `CLIENT_KEYS_FILE`;
+- `ADMIN_API_TOKEN`.
 
-TalkToMe 0.0.92 defaults to local transcription mode and includes private Huis CA support, a provider-aware key check for `localApi`, and safer handling for OS-specific CA file paths:
+The managed key store contains token hashes, labels, timestamps, notes, and
+revocation state. Plaintext generated tokens are returned only once. Successful
+authentication updates `last_used_at` in memory and batches that metadata write
+in the background. A metadata-write failure is logged but does not reject an
+otherwise valid transcription. Create and revoke operations wait for successful
+key-store persistence.
 
-- `talkToMe.transcriptionProvider`: `openai` or `localApi`
-- `talkToMe.transcriptionEndpoint`: defaults to `https://speech-to-text.huis/v1/transcriptions`
-- `talkToMe.transcriptionCaFile`: optional per-client PEM path when the OS trust store does not trust the Huis root CA
-- `TalkToMe: Set Local Transcription API Key`: stores the client token in VS Code SecretStorage
+The service loads the managed key store once per process. Use the admin API for
+normal changes; restart the service after restoring or replacing the file
+outside the application.
 
-The extension keeps the current direct OpenAI path as the fallback while the service is proven stable.
+## Security and Logging
 
-## Management Frontend
+- Client tokens, the admin token, and the OpenAI key are separate credentials.
+- Only token hashes are stored in the managed key file.
+- nginx terminates HTTPS; Fastify trusts forwarded addresses only from loopback
+  nginx connections.
+- Authorization headers are redacted from Fastify logs.
+- Raw audio is never logged.
+- Transcript text is omitted unless `LOG_TRANSCRIPTS=true` is deliberately set.
+- The admin log API returns an allowlisted, sanitized subset of journal fields.
 
-The service includes a small operational admin UI at:
+Keep runtime secrets outside Git. The production environment file should be
+readable only by root and the `speech-to-text` service group.
+
+## TalkToMe
+
+The repository configures TalkToMe for the local service with:
+
+- `talkToMe.transcriptionProvider: localApi`;
+- `talkToMe.transcriptionEndpoint` set to the HTTPS transcription route;
+- an optional per-client `talkToMe.transcriptionCaFile` when the operating
+  system does not trust the Huis root CA;
+- `TalkToMe: Set Local Transcription API Key` for VS Code SecretStorage.
+
+TalkToMe must send a speech-to-text client token, never the OpenAI or admin
+credential. See [the TalkToMe rollout guide](docs/talktome-rollout.md).
+
+## Administration and Operations
+
+The browser UI is available at:
 
 ```text
 https://speech-to-text.huis/admin
 ```
 
-Admin API calls require `Authorization: Bearer <ADMIN_API_TOKEN>`.
-The UI can create, list, and revoke client tokens. Generated client tokens are displayed once and then stored only as hashes in the configured `CLIENT_KEYS_FILE`.
+Admin API calls require `Authorization: Bearer <ADMIN_API_TOKEN>`. The UI can
+create, list, and revoke managed client tokens and display sanitized recent
+client audit events.
 
-## First Milestone
+Use these guides for the remaining lifecycle:
 
-1. Build the Node/Fastify service with health routes and one transcription route.
-2. Add mocked tests for multipart validation and OpenAI forwarding.
-3. Run it manually on `speech-to-text.huis`.
-4. Add a systemd unit.
-5. Add TalkToMe local API support behind a setting.
-6. Switch one machine over, then broaden usage.
+- [Deployment](docs/deployment.md)
+- [Operations and recovery](docs/operations.md)
+- [Implementation notes](docs/implementation-plan.md)
+- [Project and rollout tracker](docs/todo.md)
 
-## Rollout Status
-
-Run the server-side rollout checks with:
-
-```bash
-npm run rollout:status
-```
-
-This verifies service health, readiness, the configured transcription model, nginx and systemd state, the workspace TalkToMe settings, the Huis extension feed version, and recent transcription completion logs without printing tokens or transcript text.
-
-## Server Bootstrap Notes
-
-Current host:
-
-```text
-hostname: speech-to-text
-project: /opt/speech-to-text
-service DNS: speech-to-text.huis
-CA DNS: caserver.huis
-```
-
-Installed tooling:
-
-```text
-Node.js v26.3.0
-npm 11.17.0
-corepack 0.35.0
-uv 0.11.21
-git 2.43.0
-Smallstep step CLI 0.30.6
-jq 1.7
-nginx 1.24.0
-espeak-ng 1.51
-shellcheck 0.9.0
-ESLint 10.x
-markdownlint-cli2 0.22.x
-```
-
-Base OS packages added for development and deployment:
-
-```text
-ca-certificates
-curl
-git
-openssh-client
-build-essential
-xz-utils
-gnupg
-nginx
-jq
-step-cli
-espeak-ng
-shellcheck
-```
-
-Local configuration state:
-
-- `/etc/speech-to-text/speech-to-text.env` holds runtime secrets and is mode `0640` for `root:speech-to-text`.
-- `/opt/.env` was used only for early testing and has been retired.
-- Client API keys are separate bearer tokens stored as hashes in `CLIENT_KEYS_FILE`; clients should not receive the OpenAI API key.
-
-CA and HTTPS state:
-
-- `caserver.huis` resolves and serves the Huis root CA distribution page.
-- The Huis root CA has been installed into this host's Ubuntu trust store.
-- `https://caserver.huis` verifies without `curl -k`.
-- step-ca is reachable at `https://caserver.huis:9000`.
-- step-ca health returns `{"status":"ok"}` and version returns `{"version":"0.29.0"}`.
-
-Web front door state:
-
-- nginx is installed, active, and enabled.
-- The default nginx site currently responds on `http://speech-to-text.huis`.
-- The application API should still bind locally or on the LAN as planned; nginx can later terminate HTTPS and proxy to the Node service and any management UI.
-
-Git and GitHub state:
-
-- The repository is initialized on branch `main`.
-- GitHub remote `origin` uses SSH alias `github.com-speech-to-text`.
-- Remote URL: `git@github.com-speech-to-text:JohancGroenewald/speech-to-text.git`
-- The SSH private key is stored at `/root/.ssh/speech-to-text_github_ed25519`.
-- The SSH public key fingerprint is `SHA256:G6wNsxsUI9JgPfqBjmSYThhdaVCAC0zi/J89tuDXGE0`.
+Repository changes do not update the running system automatically. Copy changed
+deployment definitions and restart or reload the relevant service as described
+in the deployment guide.

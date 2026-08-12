@@ -1,6 +1,7 @@
 # TalkToMe Rollout
 
-Status: TalkToMe `0.0.92` is published to the Huis extension feed.
+Repository rollout target: TalkToMe `0.0.92` from the Huis extension feed. Run
+the status check below to verify current feed and host state.
 
 ## Update TalkToMe
 
@@ -10,7 +11,7 @@ Install or update TalkToMe from the local extension feed:
 http://vscode.huis
 ```
 
-The feed should show:
+The configured rollout check expects:
 
 ```text
 JohancGroenewald.talk-to-me 0.0.92
@@ -39,11 +40,17 @@ If the VS Code extension host does not trust the Huis root CA, also set a PEM fi
 
 The Linux path above works only for Linux clients such as `vscode.huis`. On Windows or macOS, use the path where the Huis root CA PEM is stored on that client. Keep OS-specific CA paths in user or machine settings, not in the shared workspace.
 
-This repository includes `.vscode/settings.json` with the shared `localApi` provider and endpoint values already set. The active `/opt/speech-to-text.code-workspace` file also sets `talkToMe.transcriptionProvider` and `talkToMe.transcriptionEndpoint`, because VS Code loads that workspace file for this server session.
+This repository includes `.vscode/settings.json` with the shared `localApi`
+provider and endpoint values already set. A separate VS Code workspace file or
+user setting can override them, so inspect the effective settings when
+troubleshooting.
 
-Opening this workspace with TalkToMe `0.0.92` should therefore select `localApi` automatically. TalkToMe no longer requires an OpenAI key unless `talkToMe.transcriptionProvider` is explicitly set to `openai`. The local API token still has to be stored through SecretStorage.
+Opening this workspace with TalkToMe `0.0.92` should therefore select `localApi`
+automatically. TalkToMe no longer requires an OpenAI key unless
+`talkToMe.transcriptionProvider` is explicitly set to `openai`. The local API
+token still has to be stored through SecretStorage.
 
-## Store The Client Token
+## Store the Client Token
 
 Run this command from VS Code:
 
@@ -53,7 +60,7 @@ TalkToMe: Set Local Transcription API Key
 
 Paste a speech-to-text client token. TalkToMe stores it in VS Code SecretStorage, not in settings JSON.
 
-The initial token generated during bootstrap is stored on the server at:
+If the legacy initial-token handoff file is still retained, it is stored at:
 
 ```text
 /root/speech-to-text-initial-client-token.txt
@@ -63,10 +70,14 @@ Do not paste client tokens into Git, docs, shell history, or chat logs.
 
 ## Smoke Test
 
-Record a short phrase in TalkToMe after switching to `localApi`. The service should log a `POST /v1/transcriptions` request with:
+Before recording, confirm that `GET /readyz` returns `ok: true`. Then record a
+short phrase in TalkToMe after switching to `localApi`. The service should emit
+the following metadata across its audit events:
 
 ```text
-statusCode: 200
+method: POST
+route: /v1/transcriptions
+status_code: 200
 provider: openai
 model: gpt-4o-transcribe
 transcript_logged: false
@@ -87,4 +98,6 @@ cd /opt/speech-to-text
 npm run rollout:status -- "10 minutes ago"
 ```
 
-The status check reports only metadata such as request IDs, client IDs, duration, model, and `transcript_logged`; it does not print tokens or transcript text.
+The status check verifies its configured TalkToMe version target and reports
+only metadata such as request IDs, client IDs, duration, model, and
+`transcript_logged`; it does not print tokens or transcript text.

@@ -1,10 +1,19 @@
 const crypto = require('node:crypto');
-const fs = require('node:fs');
+const fs = require('node:fs/promises');
 const path = require('node:path');
 
 const TOKEN_PREFIX = 'stt';
+const DEFAULT_USAGE_FLUSH_DELAY_MS = 1000;
+const STORED_HASH_PATTERN = /^sha256:[a-f0-9]{64}$/;
 
-function createClientKeyManager({ envTokens = [], keysFile }) {
+function createClientKeyManager({
+  envTokens = [],
+  keysFile,
+  usageFlushDelayMs = DEFAULT_USAGE_FLUSH_DELAY_MS,
+  onUsagePersistenceError = () => {},
+  readStoreImpl = readStore,
+  writeStoreImpl = writeStore
+}) {
   const envKeys = envTokens.map((token, index) => ({
     id: `env-${index + 1}`,
     label: `env-${index + 1}`,
@@ -12,9 +21,35 @@ function createClientKeyManager({ envTokens = [], keysFile }) {
     source: 'env',
     revoked_at: null
   }));
+  const pendingUsage = new Map();
+  let cachedStorePromise;
+  let mutationQueue = Promise.resolve();
+  let usageFlushPromise;
+  let usageFlushTimer;
 
-  function listKeys() {
-    const store = readStore(keysFile);
+  async function getStore() {
+    if (!cachedStorePromise) {
+      cachedStorePromise = readStoreImpl(keysFile);
+    }
+    return cachedStorePromise;
+  }
+
+  function queueMutation(mutator) {
+    const operation = mutationQueue.then(async () => {
+      const currentStore = await getStore();
+      const nextStore = cloneStore(currentStore);
+      const result = mutator(nextStore);
+      await writeStoreImpl(keysFile, nextStore);
+      cachedStorePromise = Promise.resolve(nextStore);
+      return result;
+    });
+    mutationQueue = operation.catch(() => {});
+    return operation;
+  }
+
+  async function listKeys() {
+    await mutationQueue;
+    const store = await getStore();
     return [
       ...envKeys.map((key) => ({
         id: key.id,
@@ -28,7 +63,7 @@ function createClientKeyManager({ envTokens = [], keysFile }) {
     ];
   }
 
-  function createKey({ label, notes = '' }) {
+  async function createKey({ label, notes = '' }) {
     const normalizedLabel = String(label || '').trim();
     if (!normalizedLabel) {
       throw new Error('Client key label is required.');
@@ -36,7 +71,6 @@ function createClientKeyManager({ envTokens = [], keysFile }) {
 
     const token = generateToken();
     const now = new Date().toISOString();
-    const store = readStore(keysFile);
     const key = {
       id: `key_${crypto.randomBytes(10).toString('hex')}`,
       label: normalizedLabel,
@@ -47,8 +81,7 @@ function createClientKeyManager({ envTokens = [], keysFile }) {
       last_used_at: null,
       revoked_at: null
     };
-    store.keys.push(key);
-    writeStore(keysFile, store);
+    await queueMutation((store) => store.keys.push(key));
 
     return {
       token,
@@ -56,20 +89,20 @@ function createClientKeyManager({ envTokens = [], keysFile }) {
     };
   }
 
-  function revokeKey(id) {
-    const store = readStore(keysFile);
-    const key = store.keys.find((candidate) => candidate.id === id);
-    if (!key) {
-      return false;
-    }
-    if (!key.revoked_at) {
-      key.revoked_at = new Date().toISOString();
-      writeStore(keysFile, store);
-    }
-    return true;
+  async function revokeKey(id) {
+    return queueMutation((store) => {
+      const key = store.keys.find((candidate) => candidate.id === id);
+      if (!key) {
+        return false;
+      }
+      if (!key.revoked_at) {
+        key.revoked_at = new Date().toISOString();
+      }
+      return true;
+    });
   }
 
-  function verifyToken(token) {
+  async function verifyToken(token) {
     const normalizedToken = String(token || '').trim();
     if (!normalizedToken) {
       return undefined;
@@ -85,7 +118,7 @@ function createClientKeyManager({ envTokens = [], keysFile }) {
       };
     }
 
-    const store = readStore(keysFile);
+    const store = await getStore();
     const key = store.keys.find(
       (candidate) => !candidate.revoked_at && safeEqual(candidate.hash, tokenHash)
     );
@@ -93,8 +126,9 @@ function createClientKeyManager({ envTokens = [], keysFile }) {
       return undefined;
     }
 
-    key.last_used_at = new Date().toISOString();
-    writeStore(keysFile, store);
+    const lastUsedAt = new Date().toISOString();
+    key.last_used_at = lastUsedAt;
+    scheduleUsageUpdate(key.id, lastUsedAt);
 
     return {
       id: key.id,
@@ -103,8 +137,62 @@ function createClientKeyManager({ envTokens = [], keysFile }) {
     };
   }
 
+  function scheduleUsageUpdate(id, lastUsedAt) {
+    pendingUsage.set(id, lastUsedAt);
+    if (usageFlushTimer) {
+      return;
+    }
+    usageFlushTimer = setTimeout(() => {
+      usageFlushTimer = undefined;
+      void flushUsageUpdates();
+    }, usageFlushDelayMs);
+    usageFlushTimer.unref?.();
+  }
+
+  async function flushUsageUpdates() {
+    if (usageFlushTimer) {
+      clearTimeout(usageFlushTimer);
+      usageFlushTimer = undefined;
+    }
+    if (!usageFlushPromise && pendingUsage.size > 0) {
+      const updates = new Map(pendingUsage);
+      pendingUsage.clear();
+      usageFlushPromise = persistUsageUpdates(updates).finally(() => {
+        usageFlushPromise = undefined;
+      });
+    }
+    if (!usageFlushPromise) {
+      return true;
+    }
+
+    const currentResult = await usageFlushPromise;
+    if (pendingUsage.size > 0) {
+      const nextResult = await flushUsageUpdates();
+      return currentResult && nextResult;
+    }
+    return currentResult;
+  }
+
+  async function persistUsageUpdates(updates) {
+    try {
+      await queueMutation((store) => {
+        for (const [id, lastUsedAt] of updates) {
+          const key = store.keys.find((candidate) => candidate.id === id);
+          if (key && !key.revoked_at) {
+            key.last_used_at = lastUsedAt;
+          }
+        }
+      });
+      return true;
+    } catch (error) {
+      onUsagePersistenceError(error);
+      return false;
+    }
+  }
+
   return {
     createKey,
+    flushUsageUpdates,
     listKeys,
     revokeKey,
     verifyToken
@@ -128,26 +216,84 @@ function safeEqual(left, right) {
   return crypto.timingSafeEqual(leftBuffer, rightBuffer);
 }
 
-function readStore(keysFile) {
-  if (!keysFile || !fs.existsSync(keysFile)) {
+async function inspectClientKeyStore(keysFile) {
+  try {
+    const store = await readStore(keysFile);
+    return {
+      ok: store.keys.some((key) => !key.revoked_at),
+      activeKeys: store.keys.filter((key) => !key.revoked_at).length
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      activeKeys: 0,
+      error
+    };
+  }
+}
+
+async function readStore(keysFile) {
+  if (!keysFile) {
     return { keys: [] };
   }
-  const parsed = JSON.parse(fs.readFileSync(keysFile, 'utf8'));
+
+  let content;
+  try {
+    content = await fs.readFile(keysFile, 'utf8');
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      return { keys: [] };
+    }
+    throw error;
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(content);
+  } catch (error) {
+    throw new Error('Client key store is not valid JSON.', { cause: error });
+  }
   if (!parsed || !Array.isArray(parsed.keys)) {
-    return { keys: [] };
+    throw new Error('Client key store must contain a keys array.');
+  }
+  for (const key of parsed.keys) {
+    if (!isValidStoredKey(key)) {
+      throw new Error('Client key store contains an invalid key record.');
+    }
   }
   return parsed;
 }
 
-function writeStore(keysFile, store) {
+async function writeStore(keysFile, store) {
   if (!keysFile) {
     throw new Error('CLIENT_KEYS_FILE is not configured.');
   }
-  fs.mkdirSync(path.dirname(keysFile), { recursive: true, mode: 0o700 });
+  await fs.mkdir(path.dirname(keysFile), { recursive: true, mode: 0o700 });
   const tempPath = `${keysFile}.${process.pid}.${Date.now()}.tmp`;
-  fs.writeFileSync(tempPath, `${JSON.stringify(store, null, 2)}\n`, { mode: 0o600 });
-  fs.renameSync(tempPath, keysFile);
-  fs.chmodSync(keysFile, 0o600);
+  try {
+    await fs.writeFile(tempPath, `${JSON.stringify(store, null, 2)}\n`, { mode: 0o600 });
+    await fs.rename(tempPath, keysFile);
+    await fs.chmod(keysFile, 0o600);
+  } catch (error) {
+    await fs.rm(tempPath, { force: true }).catch(() => {});
+    throw error;
+  }
+}
+
+function isValidStoredKey(key) {
+  return Boolean(
+    key &&
+      typeof key === 'object' &&
+      String(key.id || '').trim() &&
+      STORED_HASH_PATTERN.test(String(key.hash || ''))
+  );
+}
+
+function cloneStore(store) {
+  return {
+    ...store,
+    keys: store.keys.map((key) => ({ ...key }))
+  };
 }
 
 function redactStoredKey(key) {
@@ -165,5 +311,6 @@ function redactStoredKey(key) {
 module.exports = {
   createClientKeyManager,
   generateToken,
-  hashToken
+  hashToken,
+  inspectClientKeyStore
 };

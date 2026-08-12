@@ -34,10 +34,7 @@ const SUPPORTED_AUDIO_TYPES = new Set([
 
 function buildServer({
   config = parseConfig(),
-  keyManager = createClientKeyManager({
-    envTokens: config.clientApiKeys,
-    keysFile: config.clientKeysFile
-  }),
+  keyManager,
   transcriber = transcribeWithOpenAI,
   adminLogReader,
   logger = {
@@ -47,8 +44,18 @@ function buildServer({
 } = {}) {
   const app = Fastify({
     logger,
-    genReqId: () => `req_${crypto.randomUUID().replaceAll('-', '')}`
+    genReqId: () => `req_${crypto.randomUUID().replaceAll('-', '')}`,
+    trustProxy: ['127.0.0.1', '::1']
   });
+  const clientKeyManager =
+    keyManager ||
+    createClientKeyManager({
+      envTokens: config.clientApiKeys,
+      keysFile: config.clientKeysFile,
+      onUsagePersistenceError(error) {
+        app.log.warn({ err: error }, 'client key usage metadata could not be persisted');
+      }
+    });
 
   app.register(multipart, {
     limits: {
@@ -106,7 +113,7 @@ function buildServer({
   });
 
   app.get('/readyz', async (request, reply) => {
-    const readiness = getReadiness(config);
+    const readiness = await getReadiness(config);
     if (!readiness.ok) {
       reply.status(503);
       return {
@@ -121,7 +128,7 @@ function buildServer({
     };
   });
 
-  app.post('/v1/transcriptions', { preHandler: authenticateClient(keyManager) }, async (request) => {
+  app.post('/v1/transcriptions', { preHandler: authenticateClient(clientKeyManager) }, async (request) => {
     request.transcriptionStartedAt = process.hrtime.bigint();
     const audio = await readMultipartAudio(request, config);
     logClientAudio(request, audio);
@@ -180,7 +187,15 @@ function buildServer({
     return response;
   });
 
-  registerAdminRoutes(app, { config, keyManager, logReader: adminLogReader });
+  registerAdminRoutes(app, {
+    config,
+    keyManager: clientKeyManager,
+    logReader: adminLogReader
+  });
+
+  app.addHook('onClose', async () => {
+    await clientKeyManager.flushUsageUpdates?.();
+  });
 
   return app;
 }
@@ -198,7 +213,7 @@ function authenticateClient(keyManager) {
     if (!match) {
       throw unauthorized();
     }
-    const client = keyManager.verifyToken(match[1]);
+    const client = await keyManager.verifyToken(match[1]);
     if (!client) {
       throw unauthorized();
     }
@@ -321,6 +336,12 @@ async function readMultipartAudio(request, config) {
   } catch (error) {
     if (error.code === 'FST_REQ_FILE_TOO_LARGE' || /File size limit exceeded/i.test(error.message)) {
       throw audioTooLarge(`Audio exceeds the ${config.maxAudioBytes} byte limit.`);
+    }
+    if (error.code === 'FST_FILES_LIMIT') {
+      throw invalidRequest('Only one audio file may be uploaded.');
+    }
+    if (error.code === 'FST_FIELDS_LIMIT' || error.code === 'FST_PARTS_LIMIT') {
+      throw invalidRequest('Multipart request contains too many fields.');
     }
     throw error;
   }

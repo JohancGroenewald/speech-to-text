@@ -1,6 +1,6 @@
 # Operations
 
-Day-to-day commands for `speech-to-text.huis`.
+Day-to-day operation and recovery for `speech-to-text.huis`.
 
 ## Service Control
 
@@ -10,7 +10,7 @@ sudo systemctl restart speech-to-text
 sudo journalctl -u speech-to-text -f
 ```
 
-The service listens on `127.0.0.1:7077`. LAN clients should use nginx:
+Fastify listens on `127.0.0.1:7077`. LAN clients must use nginx over HTTPS:
 
 ```text
 https://speech-to-text.huis
@@ -23,11 +23,21 @@ curl -fsS https://speech-to-text.huis/healthz
 curl -fsS https://speech-to-text.huis/readyz
 ```
 
-Expected readiness model:
+`/healthz` confirms only that the HTTP process is alive. `/readyz` verifies the
+provider key, at least one active client credential, the managed key-store
+format when it is needed, and the admin token. It does not call OpenAI.
 
-```text
-gpt-4o-transcribe
-```
+Common readiness failures:
+
+| Code | Operator action |
+| --- | --- |
+| `missing_provider_key` | Set `OPENAI_API_KEY` in the systemd environment file. |
+| `missing_client_keys` | Create a managed key or configure a bootstrap client token. |
+| `invalid_client_keys` | Check key-store JSON, ownership, permissions, and restore from backup if needed. |
+| `missing_admin_token` | Set a separate high-entropy `ADMIN_API_TOKEN`. |
+
+Restart the service after editing its environment file or externally restoring
+the managed key store.
 
 ## Admin Access
 
@@ -37,142 +47,197 @@ The admin UI is available at:
 https://speech-to-text.huis/admin
 ```
 
-The admin token is stored on the server at:
+The runtime admin credential is `ADMIN_API_TOKEN` in:
 
 ```text
-/root/speech-to-text-admin-token.txt
+/etc/speech-to-text/speech-to-text.env
 ```
 
-Do not paste the admin token into Git, docs, shell history, or chat logs.
+An operator handoff copy may be kept in
+`/root/speech-to-text-admin-token.txt` on the current host. Treat any such copy
+as a root-only secret. Never paste tokens into Git, documentation, recorded
+shell command lines, or chat logs.
 
-The admin UI includes a client log panel that reads recent sanitized transcription audit events from `journalctl`. The systemd unit grants the service `systemd-journal` as a supplementary group for this read-only view.
+The browser keeps the entered admin token in `sessionStorage`, so closing the
+tab or browser session removes it. Admin API calls use the token as a bearer
+credential.
 
 ## Client Keys
 
-Create client keys from the admin UI. Generated tokens are shown once. After creation, only the token hash is stored in:
+Create, list, and revoke managed client keys from the admin UI. Generated
+plaintext tokens are shown once; the service-owned store contains only hashes
+and metadata:
 
 ```text
 /var/lib/speech-to-text/client-keys.json
 ```
 
-The initial one-time TalkToMe token generated during bootstrap is stored at:
+Successful file-token authentication updates `last_used_at` immediately in
+memory and batches the file write in the background. If that metadata write
+fails, authentication still succeeds and the service logs:
 
 ```text
-/root/speech-to-text-initial-client-token.txt
+client key usage metadata could not be persisted
 ```
 
-Rotate a client token:
+Create and revoke operations are serialized and return success only after the
+updated store has been written durably. The store is loaded once per process;
+restart after replacing it outside the admin API.
 
-1. Create a replacement token in the admin UI.
-2. Update the client, such as TalkToMe SecretStorage, with the new token.
-3. Confirm the client can transcribe.
-4. Revoke the old token from the admin UI.
+Rotate a managed client token:
+
+1. Create a labeled replacement token in the admin UI.
+2. Put it in the client secret store, such as TalkToMe SecretStorage.
+3. Confirm a transcription succeeds with the replacement.
+4. Revoke the old managed key.
+
+Environment-sourced client tokens appear in the key list but cannot be revoked
+through the admin API. Remove them from `SPEECH_TO_TEXT_API_KEYS` and restart the
+service.
 
 ## Manual Transcription Smoke Test
 
-Generate a local test WAV and send it through the HTTPS API:
+Generate a small local WAV and send it through the HTTPS API. Read the token
+without printing it:
 
 ```bash
-tmpdir="$(mktemp -d)"
-espeak-ng -w "$tmpdir/smoke.wav" "testing speech to text service"
-token="$(sudo sed -n '1p' /root/speech-to-text-initial-client-token.txt)"
+stt_smoke_dir="$(mktemp -d)"
+trap 'rm -rf "$stt_smoke_dir"' EXIT
+espeak-ng -w "$stt_smoke_dir/smoke.wav" "testing speech to text service"
+stt_client_token="$(sudo sed -n '1p' /root/speech-to-text-initial-client-token.txt)"
 curl -fsS \
-  -H "Authorization: Bearer $token" \
-  -F "file=@$tmpdir/smoke.wav;type=audio/wav" \
+  --config - \
+  -F "file=@$stt_smoke_dir/smoke.wav;type=audio/wav" \
   -F "language=en" \
-  https://speech-to-text.huis/v1/transcriptions
-rm -rf "$tmpdir"
+  https://speech-to-text.huis/v1/transcriptions \
+  <<< "header = \"Authorization: Bearer $stt_client_token\""
+unset stt_client_token
 ```
 
-The response should include `model: "gpt-4o-transcribe"` and a transcript.
+If the legacy initial-token handoff file is no longer retained, use a currently
+active client token through an equally protected input method. The response
+should contain transcript text, a request ID, provider `openai`, and the
+configured model.
 
-Watch transcription latency and metadata during a client rollout:
+## Logs and Diagnostics
+
+Watch sanitized transcription audit events:
 
 ```bash
 sudo /opt/speech-to-text/scripts/watch-transcriptions.sh "10 minutes ago"
 ```
 
-The watcher shows the client request, audio input, transcription completion, and response output events. It must not show client tokens, raw audio, or transcript text.
-
-The same sanitized events are available from the admin UI under `Client Logs`.
-
-Every authenticated transcription request also writes per-client audit events:
+The normal event sequence is:
 
 ```text
 client request received
 client audio received
+transcription complete
 client response sent
 ```
 
-These events include metadata such as `request_id`, `client_id`, `client_label`, `client_source`, request content type and length, `audio_bytes`, MIME type, language hint, response status, provider, model, duration, response text character count, and error code when applicable.
+A failed request also produces `request failed`. Events include request and
+client IDs, sizes, MIME type, language hint, status, latency, provider, model,
+and transcript character count as applicable.
 
-By default the logs do not include bearer tokens, raw audio, or transcript text. Set `LOG_TRANSCRIPTS=true` only when transcript text is intentionally needed in logs for a short diagnostic window.
+Authorization headers and raw audio are never logged. Transcript text is
+omitted by default. Enable `LOG_TRANSCRIPTS=true` only for a deliberate,
+short-lived diagnostic window, then restart the service; disable it and restart
+again immediately afterward. The admin log API always filters transcript text
+out of its response.
 
-For a one-shot server-side rollout check, run:
+Run the one-shot rollout check with:
 
 ```bash
+cd /opt/speech-to-text
 npm run rollout:status -- "10 minutes ago"
 ```
 
-This checks service health, readiness, the expected model, nginx and systemd state, workspace TalkToMe settings, the Huis TalkToMe feed version, and a safe summary of recent transcription completion logs.
+It checks service health and readiness, model, nginx and systemd state,
+workspace TalkToMe configuration, the configured extension-feed target, and a
+safe summary of recent completion events.
+
+## Deploy Repository Changes
+
+The repository is not an automatic deployment mechanism. After reviewed
+changes, follow [deployment.md](deployment.md). At minimum, validate before
+restarting:
+
+```bash
+cd /opt/speech-to-text
+npm ci
+npm run validate
+sudo systemctl restart speech-to-text
+```
+
+If `deploy/nginx/speech-to-text.conf` changed, install it, run `sudo nginx -t`,
+and reload nginx. If the systemd unit changed, copy it and run
+`sudo systemctl daemon-reload` before restarting.
 
 ## TLS Renewal
 
-Renew the Huis CA certificate with:
-
 ```bash
+sudo nginx -t
 sudo /opt/speech-to-text/scripts/renew-huis-cert.sh
-```
-
-Then verify:
-
-```bash
 curl -fsSI https://speech-to-text.huis/admin
 ```
 
+The renewal script reissues the certificate, restores certificate and key
+permissions, and reloads nginx.
+
 ## Dependency Updates
+
+Review available updates before changing the lockfile:
 
 ```bash
 cd /opt/speech-to-text
 npm outdated
 npm update
-npm test
-npm run lint
-sudo systemctl restart speech-to-text
+npm run validate
 ```
 
-Commit and push dependency lockfile changes after tests pass.
+Review and commit both manifest and lockfile changes intentionally. Restart the
+service only after validation passes.
 
 ## Local Validation
-
-Run the full validation suite with:
 
 ```bash
 npm run validate
 ```
 
-This runs JavaScript linting, Markdown linting, JSON parsing, shell checks, nginx/systemd config parsing, source-file length checks, JavaScript syntax checks, and tests.
+The gate runs JavaScript and Markdown linting, JSON parsing, ShellCheck,
+deployment-config checks, source-file length limits, JavaScript syntax checks,
+and the complete Node test suite.
 
-The repo uses `.githooks/pre-commit` for the same validation gate:
+Enable the same pre-commit gate for this checkout with:
 
 ```bash
 git config core.hooksPath .githooks
 ```
 
-## Recovery
+## Troubleshooting and Recovery
 
-If nginx is unavailable, inspect its config and logs:
+Inspect service and nginx failures without exposing environment contents:
 
 ```bash
+sudo journalctl -u speech-to-text -n 100 --no-pager
 sudo nginx -t
 sudo journalctl -u nginx -n 100 --no-pager
 ```
 
-If the admin UI is unavailable but the service is running, use the root-only token files to recover access. If the key store is damaged, restore it from backup or move it aside and restart the service; then create new client tokens from the admin UI.
+For `invalid_client_keys`, first preserve the damaged file and its permissions,
+then restore a known-good encrypted backup. Restart because the service caches
+the store in memory. If no backup is available, move the damaged file to a
+root-only recovery location, restart, and create replacement client tokens
+through the admin UI. Existing managed client tokens will no longer work.
+
+If usage metadata cannot be persisted but transcription still works, verify
+that `/var/lib/speech-to-text` and `client-keys.json` are writable by the
+`speech-to-text` service account and that the filesystem has free space.
 
 ## Backups
 
-Back up these files:
+Back up:
 
 ```text
 /etc/speech-to-text/speech-to-text.env
@@ -181,4 +246,6 @@ Back up these files:
 /etc/ssl/huis/speech-to-text.huis.key
 ```
 
-Keep backups encrypted or otherwise protected. They contain service secrets or credentials.
+Keep backups encrypted and access-controlled. The environment file contains
+plaintext credentials, and the key store contains authentication hashes and
+client metadata.

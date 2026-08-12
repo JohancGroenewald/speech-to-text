@@ -24,7 +24,7 @@ function registerAdminRoutes(app, { config, keyManager, logReader = createJourna
   });
 
   app.get('/admin/api/status', { preHandler: authenticateAdmin(config) }, async () => {
-    const readiness = getReadiness(config);
+    const readiness = await getReadiness(config);
     return {
       ok: readiness.ok,
       missing: readiness.missing,
@@ -39,7 +39,7 @@ function registerAdminRoutes(app, { config, keyManager, logReader = createJourna
   });
 
   app.get('/admin/api/client-keys', { preHandler: authenticateAdmin(config) }, async () => ({
-    keys: keyManager.listKeys()
+    keys: await keyManager.listKeys()
   }));
 
   app.get('/admin/api/logs', { preHandler: authenticateAdmin(config) }, async (request) => {
@@ -62,7 +62,7 @@ function registerAdminRoutes(app, { config, keyManager, logReader = createJourna
     if (!String(body.label || '').trim()) {
       throw invalidRequest('Client key label is required.');
     }
-    const result = keyManager.createKey({
+    const result = await keyManager.createKey({
       label: body.label,
       notes: body.notes
     });
@@ -71,7 +71,7 @@ function registerAdminRoutes(app, { config, keyManager, logReader = createJourna
   });
 
   app.delete('/admin/api/client-keys/:id', { preHandler: authenticateAdmin(config) }, async (request) => {
-    const revoked = keyManager.revokeKey(request.params.id);
+    const revoked = await keyManager.revokeKey(request.params.id);
     if (!revoked) {
       throw new ApiError(404, 'not_found', 'Client key was not found.');
     }

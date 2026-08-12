@@ -32,7 +32,7 @@ Primary endpoint:
 
 Discovery and health:
 - GET /healthz checks whether the HTTP process is alive.
-- GET /readyz checks whether required provider configuration is present.
+- GET /readyz checks whether required service configuration is usable.
 - GET /openapi.json returns the machine-readable API contract.
 
 Safety rules for agents:
@@ -72,7 +72,7 @@ POST /v1/transcriptions
 Request type: multipart/form-data
 
 Fields:
-- file: required audio file, maximum 25 MB by default
+- file: required audio file, maximum 25 MiB (26214400 bytes) by default
 - language: optional language hint, for example en or af
 
 Forbidden fields:
@@ -101,7 +101,7 @@ Successful response:
 
 ## Error shape
 
-All API errors use this JSON envelope:
+Transcription and admin API errors use this JSON envelope:
 
 {
   "error": {
@@ -130,11 +130,11 @@ Returns process liveness:
 
 GET /readyz
 
-Returns readiness when provider configuration is available:
+Returns readiness when required service configuration is usable:
 
 { "ok": true, "model": "gpt-4o-transcribe", "provider": "openai" }
 
-If provider configuration is missing, the route returns HTTP 503 with the standard error detail nested under ok:false.
+If provider, client-key, key-store, or admin configuration is missing or invalid, the route returns HTTP 503 with an error detail nested under ok:false. Readiness does not call OpenAI.
 
 ## Admin endpoints
 
@@ -161,13 +161,13 @@ DELETE /admin/api/client-keys/:id
 GET /admin/api/logs?since=10%20minutes%20ago&limit=80
 - Returns sanitized recent client audit logs.
 - Logs include client IDs, labels, status codes, durations, MIME types, byte counts, and transcript character counts.
-- Logs do not include bearer tokens, raw audio, or transcript text unless the server is explicitly configured with LOG_TRANSCRIPTS=true.
+- Admin log responses never include bearer tokens, raw audio, or transcript text. LOG_TRANSCRIPTS affects only separate service-journal events.
 
 ## Agent behavior checklist
 
 When using this API from a local language model or tool agent:
 - Start by reading /openapi.json if you need a strict schema.
-- Use /readyz before transcription if you need to distinguish service-down from provider-not-configured.
+- Use /readyz before transcription to distinguish an unavailable process from incomplete local configuration.
 - Send exactly one file field.
 - Include language only when the caller has a useful language hint.
 - Do not choose or override the model.

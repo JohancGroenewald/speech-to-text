@@ -71,7 +71,7 @@ const OPENAPI_DOCUMENT = {
             content: { 'application/json': { schema: { $ref: '#/components/schemas/Ready' } } }
           },
           503: {
-            description: 'Missing server configuration',
+              description: 'Missing or invalid server configuration',
             content: { 'application/json': { schema: { $ref: '#/components/schemas/ReadyError' } } }
           }
         }
@@ -94,7 +94,7 @@ const OPENAPI_DOCUMENT = {
                   file: {
                     type: 'string',
                     format: 'binary',
-                    description: 'Audio file. Maximum deployed size is 25 MB.'
+                      description: 'Audio file. Maximum deployed size is 25 MiB (26214400 bytes).'
                   },
                   language: {
                     type: 'string',

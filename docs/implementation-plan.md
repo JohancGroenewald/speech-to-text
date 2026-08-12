@@ -1,144 +1,169 @@
-# Implementation Plan
+# Implementation Notes
 
-## Current TalkToMe Boundary
+Status: implemented architecture. This document records the current service
+boundary and the design decisions that should remain true during future work.
 
-The model communication code currently lives in:
+## Service Boundary
 
-```text
-TalkToMe/src/transcription/openaiTranscriber.js
-```
+TalkToMe and other clients own:
 
-The extension prepares audio and calls that module from:
+- microphone capture and local no-speech detection;
+- local audio-size checks for early feedback;
+- UI and transcript state;
+- clipboard, paste, and submit behavior;
+- storage of the speech-to-text client token.
 
-```text
-TalkToMe/src/extension.js
-```
+The service owns:
 
-Current flow:
+- client authentication;
+- request and audio validation;
+- provider credentials, request construction, and timeout handling;
+- stable API responses and request IDs;
+- managed client-token lifecycle;
+- operational metadata logging.
 
-1. Recorder returns an audio buffer and MIME type.
-2. TalkToMe rejects audio larger than 25 MB.
-3. TalkToMe loads an OpenAI key from SecretStorage, environment, or `.env`.
-4. TalkToMe creates a multipart request for `/v1/audio/transcriptions`.
-5. OpenAI returns JSON with `text`.
-6. TalkToMe appends the text to current transcript state, copies it, and starts the paste flow.
+The client sends its speech-to-text token to the local service. It never sends
+an OpenAI credential or the admin token.
 
-The standalone API should extract steps 3-5 into a server process. TalkToMe should keep steps 1-2 and 6.
+## Request Flow
 
-## Recommended Service Implementation
+1. nginx accepts HTTPS on `speech-to-text.huis` and proxies to loopback Fastify.
+2. Fastify authenticates the client before consuming the multipart file.
+3. The server accepts one supported audio file and an optional language hint.
+4. The server enforces the 25 MiB file limit and rejects unknown fields.
+5. The OpenAI adapter sends the configured model, JSON response format,
+   language hint when present, and the audio file.
+6. The adapter trims transcript text and maps timeout, provider, and empty-text
+   failures to stable API errors.
+7. The server returns transcript text and request metadata without persisting
+   transcript history.
 
-Use:
+## Runtime Stack
 
 ```text
 Node.js 20+
-Fastify
-@fastify/multipart
+Fastify 5
+@fastify/multipart 10
+CommonJS
 node:test
+nginx
+systemd
 ```
 
-Core modules:
+The service uses Node's built-in `fetch`, `FormData`, `Blob`, abort signals, and
+cryptography APIs; it does not use an OpenAI SDK.
+
+## Module Responsibilities
 
 ```text
+src/server.js
+  Fastify construction, routes, proxy trust, multipart parsing, logging,
+  authentication hook, response shaping, and error normalization.
+
 src/config.js
-  Reads env, validates required settings, exports normalized config.
+  Environment-file loading, strict configuration parsing, defaults, and
+  readiness evaluation.
 
 src/transcribers/openai.js
-  Contains the provider call currently represented by TalkToMe's openaiTranscriber.js.
-
-src/server.js
-  Owns HTTP routes, auth, validation, request IDs, logging, and error mapping.
+  Provider multipart request, timeout, response parsing, and provider errors.
 
 src/auth/clientKeys.js
-  Owns client bearer-token verification plus hashed generated token storage.
+  Environment-token verification, managed hashed-key storage, serialized
+  mutations, last-used batching, and key-store validation.
+
+src/admin/
+  Admin UI and API, journal access, and allowlisted log sanitization.
+
+src/discovery/
+  Public llms.txt guidance and OpenAPI contract.
 
 src/errors.js
-  Defines stable API errors and status-code mappings.
+  Stable API error types, HTTP status codes, and public messages.
 ```
 
-## Provider Call Rules
+## Client-Key Design
 
-Keep these rules from TalkToMe:
+Managed client tokens are high-entropy random values with an `stt_` prefix.
+Only a SHA-256 hash is stored. The JSON record also contains an opaque ID,
+operator label, optional notes, creation time, last-used time, and revocation
+time.
 
-- model default: `gpt-4o-transcribe`
-- response format: `json`
-- optional `language` field
-- request timeout: 120 seconds
-- reject empty transcript responses
-- do not log the provider API key
+The service loads and validates the store once per process. Admin create and
+revoke operations are serialized, write a temporary mode-0600 file, atomically
+rename it into place, and complete only after persistence succeeds.
 
-Add these server-side rules:
+Successful authentication updates `last_used_at` in memory and coalesces
+background persistence. Authentication does not depend on that diagnostic
+metadata write succeeding. Fastify's orderly close path asks the manager to
+flush pending usage updates; an abrupt process exit can lose only recent
+last-used metadata. External restore or replacement requires a service restart.
 
-- reject unauthenticated requests before reading large bodies where possible;
-- reject audio over `MAX_AUDIO_BYTES`;
-- reject unsupported MIME types;
-- include a request ID in every response;
-- map provider failures into stable API error codes.
+Environment tokens remain supported for bootstrap and tests. They are hashed in
+memory, labeled `env-N`, and cannot be revoked through the admin API.
 
-## TalkToMe Changes Later
+## Readiness Design
 
-Add a service client beside the existing OpenAI transcriber:
+Readiness is local and side-effect free with respect to OpenAI. It requires:
 
-```text
-TalkToMe/src/transcription/localApiTranscriber.js
-```
+- a non-empty provider credential;
+- a non-empty admin credential;
+- at least one environment client token, or a readable and structurally valid
+  managed store with an active key.
 
-Then change `transcribeAudioBuffer` to select the implementation:
+This catches missing or corrupt local configuration without making every probe
+consume provider capacity. A successful readiness response does not guarantee
+provider reachability or credential acceptance.
 
-```text
-provider=openai    -> current direct OpenAI path
-provider=localApi  -> POST audio to the LAN service
-```
+## Upload and Proxy Rules
 
-The extension should not send its OpenAI key to the service. It should only send the LAN service client token.
+Fastify limits the audio file to `MAX_AUDIO_BYTES`, which defaults to 25 MiB.
+nginx permits a 26 MiB total request so multipart headers and boundaries fit
+around a maximum-size file. Multipart file-count, field-count, and schema
+violations are `400 invalid_request`; only an oversized audio file is
+`413 audio_too_large`.
 
-## Security Posture
+Fastify binds to loopback in production and trusts forwarded addresses only
+from `127.0.0.1` or `::1`. This records the LAN client address supplied by nginx
+without accepting spoofed forwarding headers from a direct non-loopback peer.
 
-First deployment can bind to LAN, but still require a bearer token. Do not expose this service directly to the public internet.
+## Logging and Privacy
 
-Recommended defaults:
+The default logger redacts the authorization header. Audit events contain only
+operational metadata. Raw audio is never logged. Transcript logging requires an
+explicit `LOG_TRANSCRIPTS=true`; the admin journal reader still excludes
+transcript events and text.
 
-- listen on `0.0.0.0:7077` only on the trusted network;
-- firewall to local subnet if possible;
-- rotate `SPEECH_TO_TEXT_API_KEYS` by allowing multiple comma-separated tokens;
-- log request metadata, not audio contents;
-- keep transcript logging off by default.
+Provider error text may be returned to the authenticated caller as
+`provider_error`. Callers and operators should still treat all error responses
+and request IDs as potentially sensitive operational data.
 
-## Systemd Sketch
+## Validation Strategy
 
-```ini
-[Unit]
-Description=Speech-to-Text LAN API
-After=network-online.target
-Wants=network-online.target
+The test suite covers:
 
-[Service]
-Type=simple
-WorkingDirectory=/opt/speech-to-text
-EnvironmentFile=/etc/speech-to-text/speech-to-text.env
-ExecStart=/usr/bin/node /opt/speech-to-text/src/server.js
-Restart=on-failure
-RestartSec=3
-User=speech-to-text
-Group=speech-to-text
-NoNewPrivileges=true
+- strict configuration parsing and readiness key-store validation;
+- environment and managed client-token flows;
+- non-blocking failure of last-used metadata persistence;
+- route authentication, multipart parsing, MIME and size validation;
+- correct multipart limit error classification;
+- forwarded client addresses and untrusted-header rejection;
+- direct OpenAI request construction, extensions, errors, empty responses,
+  network failures, and timeouts;
+- admin key-management and sanitized log APIs;
+- public discovery documents and the OpenAPI route.
 
-[Install]
-WantedBy=multi-user.target
-```
+`npm run validate` also runs JavaScript, Markdown, JSON, shell, deployment-config,
+syntax, and source-length checks. It is the required local gate before a service
+restart or commit.
 
-## Test Strategy
+## Deferred Scope
 
-Before wiring TalkToMe to it:
+- streaming transcription;
+- speaker diarization;
+- transcript history storage;
+- public-internet exposure;
+- multiple transcription providers;
+- per-client rate limiting.
 
-1. Unit-test auth, size limits, MIME validation, and error mapping.
-2. Mock the OpenAI provider in route tests.
-3. Add one manual curl test using a tiny WAV file.
-4. Verify `journalctl -u speech-to-text` shows request IDs without secrets.
-5. Verify TalkToMe still skips transcription locally when `speechSeen === false`.
-
-## Open Questions
-
-- Should the service allow only TalkToMe clients, or should we support a general client contract from day one?
-- Do we want transcript text in logs during early development, or keep it disabled from the start?
-- Should `speech-to-text.huis` eventually sit behind HTTPS on the LAN, or is HTTP plus bearer token acceptable for the trusted subnet?
-- Do we want provider selection now, or only OpenAI until there is a real second provider?
+These additions require explicit API and privacy decisions rather than being
+implicit extensions of the current v1 contract.
