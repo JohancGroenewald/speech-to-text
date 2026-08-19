@@ -223,7 +223,12 @@ function logDetails(log) {
     return joinParts([log.method, log.route, formatBytes(log.content_length), log.content_type]);
   }
   if (log.event === 'client audio received') {
-    return joinParts([formatBytes(log.audio_bytes), log.mime_type, log.language ? 'language=' + log.language : '']);
+    return joinParts([
+      formatBytes(log.audio_bytes),
+      log.mime_type,
+      log.language ? 'language=' + log.language : '',
+      log.prompt_present ? 'prompt=' + log.prompt_chars + ' chars' : ''
+    ]);
   }
   if (log.event === 'transcription complete') {
     return joinParts([

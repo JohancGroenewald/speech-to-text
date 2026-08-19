@@ -12,6 +12,7 @@ async function transcribeWithOpenAI({
   mimeType,
   language = '',
   model,
+  prompt = '',
   timeoutMs,
   fetchImpl = fetch
 }) {
@@ -24,6 +25,9 @@ async function transcribeWithOpenAI({
     form.set('response_format', 'json');
     if (language.trim()) {
       form.set('language', language.trim());
+    }
+    if (prompt.trim()) {
+      form.set('prompt', prompt.trim());
     }
     form.set('file', new Blob([audioBuffer], { type: mimeType }), `speech.${extensionForMimeType(mimeType)}`);
 

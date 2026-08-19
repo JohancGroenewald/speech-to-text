@@ -44,6 +44,7 @@ test('serves short LLM discovery guide', async () => {
   assert.match(response.body, /OpenAPI schema: https:\/\/speech-to-text\.huis\/openapi\.json/);
   assert.match(response.body, /POST \/v1\/transcriptions/);
   assert.match(response.body, /Authorization: Bearer <client-token>/);
+  assert.match(response.body, /prompt=<transcription context, maximum 2000 characters>/);
   assert.match(response.body, /Do not send a model field/);
 });
 
@@ -55,6 +56,7 @@ test('serves detailed LLM discovery guide', async () => {
   assert.match(response.headers['content-type'], /text\/plain/);
   assert.match(response.body, /audio\/x-wav/);
   assert.match(response.body, /model: forbidden in v1/);
+  assert.match(response.body, /does not resolve people or channels/);
   assert.match(response.body, /ADMIN_API_TOKEN/);
   assert.match(response.body, /Retry 502 or 504/);
 });
@@ -69,7 +71,12 @@ test('serves OpenAPI discovery schema', async () => {
   const body = response.json();
   assert.equal(body.openapi, '3.1.0');
   assert.equal(body.info.title, 'Huis Speech-to-Text API');
+  assert.equal(body.info.version, '0.2.0');
   assert.ok(body.paths['/v1/transcriptions'].post);
+  const requestProperties =
+    body.paths['/v1/transcriptions'].post.requestBody.content['multipart/form-data'].schema.properties;
+  assert.equal(requestProperties.prompt.maxLength, 2000);
+  assert.match(requestProperties.prompt.description, /@channel/);
   assert.ok(body.paths['/llms.txt'].get);
   assert.ok(body.components.securitySchemes.clientBearer);
   assert.ok(body.components.securitySchemes.adminBearer);

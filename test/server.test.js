@@ -453,7 +453,10 @@ test('journal parser returns only sanitized client audit events', () => {
       method: 'POST',
       route: '/v1/transcriptions',
       content_length: '100',
-      content_type: 'multipart/form-data'
+      content_type: 'multipart/form-data',
+      prompt_present: true,
+      prompt_chars: 42,
+      prompt: 'private workspace vocabulary'
     }),
     journalLine({
       msg: 'transcript text',
@@ -473,6 +476,8 @@ test('journal parser returns only sanitized client audit events', () => {
   const logs = parseJournalLogLines(output);
   assert.equal(logs.length, 2);
   assert.equal(logs[0].event, 'client request received');
+  assert.equal(logs[0].prompt_chars, 42);
+  assert.equal(Object.hasOwn(logs[0], 'prompt'), false);
   assert.equal(logs[1].event, 'client response sent');
   assert.equal(JSON.stringify(logs).includes('secret transcript'), false);
   assert.equal(Object.hasOwn(logs[0], 'text'), false);

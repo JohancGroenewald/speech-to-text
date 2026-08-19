@@ -138,10 +138,11 @@ client response sent
 
 A failed request also produces `request failed`. Events include request and
 client IDs, sizes, MIME type, language hint, status, latency, provider, model,
-and transcript character count as applicable.
+prompt presence and character count, and transcript character count as
+applicable.
 
-Authorization headers and raw audio are never logged. Transcript text is
-omitted by default. Enable `LOG_TRANSCRIPTS=true` only for a deliberate,
+Authorization headers, raw audio, and prompt text are never logged. Transcript
+text is omitted by default. Enable `LOG_TRANSCRIPTS=true` only for a deliberate,
 short-lived diagnostic window, then restart the service; disable it and restart
 again immediately afterward. The admin log API always filters transcript text
 out of its response.

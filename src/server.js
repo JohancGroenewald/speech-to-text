@@ -15,9 +15,11 @@ const {
   unauthorized,
   unsupportedMedia
 } = require('./errors');
+const { normalizePromptedSlackMentions } = require('./slackFormatting');
 const { transcribeWithOpenAI } = require('./transcribers/openai');
 
 const FAVICON_PATH = path.join(__dirname, 'assets', 'favicon.png');
+const MAX_PROMPT_CHARS = 2000;
 
 const SUPPORTED_AUDIO_TYPES = new Set([
   'audio/wav',
@@ -61,7 +63,8 @@ function buildServer({
     limits: {
       fileSize: config.maxAudioBytes,
       files: 1,
-      fields: 3
+      fields: 3,
+      fieldSize: MAX_PROMPT_CHARS * 4
     }
   });
 
@@ -138,8 +141,10 @@ function buildServer({
       mimeType: audio.mimeType,
       language: audio.language,
       model: config.transcriptionModel,
+      prompt: audio.prompt,
       timeoutMs: config.requestTimeoutMs
     });
+    const text = normalizePromptedSlackMentions(result.text, audio.prompt);
     const durationMs = getRequestDurationMs(request);
 
     request.log.info(
@@ -159,7 +164,7 @@ function buildServer({
     );
 
     const response = {
-      text: result.text,
+      text,
       model: result.model,
       provider: result.provider,
       duration_ms: durationMs,
@@ -170,7 +175,7 @@ function buildServer({
       durationMs,
       provider: result.provider,
       model: result.model,
-      responseTextChars: result.text.length,
+      responseTextChars: text.length,
       transcriptLogged: config.logTranscripts
     });
     if (config.logTranscripts) {
@@ -179,7 +184,7 @@ function buildServer({
           request_id: request.id,
           client_id: request.client?.id,
           client_label: request.client?.label,
-          text: result.text
+          text
         },
         'transcript text'
       );
@@ -251,7 +256,9 @@ function logClientAudio(request, audio) {
       audio_bytes: audio.buffer.length,
       mime_type: audio.mimeType,
       language: audio.language || '',
-      language_present: Boolean(audio.language)
+      language_present: Boolean(audio.language),
+      prompt_present: Boolean(audio.prompt),
+      prompt_chars: [...audio.prompt].length
     },
     'client audio received'
   );
@@ -304,6 +311,7 @@ async function readMultipartAudio(request, config) {
 
   let fileSeen = false;
   let language = '';
+  let prompt = '';
   let mimeType = '';
   let audioBuffer;
 
@@ -324,8 +332,16 @@ async function readMultipartAudio(request, config) {
         }
         audioBuffer = await readFileBuffer(part, config.maxAudioBytes);
       } else {
+        if (part.valueTruncated) {
+          throw invalidRequest(`Multipart field "${part.fieldname}" is too large.`);
+        }
         if (part.fieldname === 'language') {
           language = String(part.value || '').trim();
+        } else if (part.fieldname === 'prompt') {
+          prompt = String(part.value || '').trim();
+          if ([...prompt].length > MAX_PROMPT_CHARS) {
+            throw invalidRequest(`Prompt must not exceed ${MAX_PROMPT_CHARS} characters.`);
+          }
         } else if (part.fieldname === 'model') {
           throw invalidRequest('The transcription model is controlled by the server.');
         } else {
@@ -356,7 +372,8 @@ async function readMultipartAudio(request, config) {
   return {
     buffer: audioBuffer,
     mimeType,
-    language
+    language,
+    prompt
   };
 }
 
@@ -416,6 +433,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  MAX_PROMPT_CHARS,
   SUPPORTED_AUDIO_TYPES,
   buildServer,
   readMultipartAudio

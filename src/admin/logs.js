@@ -102,6 +102,8 @@ function sanitizeLogPayload(payload, journalEntry = {}) {
     mime_type: payload.mime_type,
     language: payload.language,
     language_present: payload.language_present,
+    prompt_present: payload.prompt_present,
+    prompt_chars: payload.prompt_chars,
     status_code: payload.status_code || payload.statusCode,
     error_code: payload.error_code || payload.code,
     duration_ms: payload.duration_ms,

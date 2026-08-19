@@ -26,6 +26,7 @@ The service owns:
 
 - bearer-token authentication for transcription clients;
 - multipart, MIME-type, file-size, and field validation;
+- optional client-provided vocabulary and formatting context;
 - the OpenAI request and timeout boundary;
 - stable success and error response shapes;
 - client-token lifecycle management;
@@ -33,7 +34,8 @@ The service owns:
 
 ## API Summary
 
-- `POST /v1/transcriptions` transcribes one authenticated audio file.
+- `POST /v1/transcriptions` transcribes one authenticated audio file with
+  optional language and prompt hints.
 - `GET /healthz` reports process liveness.
 - `GET /readyz` validates required local configuration without calling OpenAI.
 - `GET /llms.txt`, `GET /llms-full.txt`, and `GET /openapi.json` provide public
@@ -150,7 +152,11 @@ The repository configures TalkToMe for the local service with:
 - `TalkToMe: Set Local Transcription API Key` for VS Code SecretStorage.
 
 TalkToMe must send a speech-to-text client token, never the OpenAI or admin
-credential. See [the TalkToMe rollout guide](docs/talktome-rollout.md).
+credential. Clients may also send an optional prompt of up to 2,000 characters
+for vocabulary, capitalization, and formatting. A prompt containing `@channel`
+or `@here` opts into deterministic cleanup of that broadcast mention's spoken
+equivalent; ordinary requests remain unchanged. See
+[the TalkToMe rollout guide](docs/talktome-rollout.md).
 
 ## Administration and Operations
 

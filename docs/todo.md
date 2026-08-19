@@ -1,8 +1,8 @@
 # Project TODO
 
-Status: core implementation complete; first-client rollout and deployment of
-the latest reliability changes still need live verification.
-Last updated: 2026-08-12.
+Status: core implementation and the first server rollout are complete;
+client-side rollout and observation continue.
+Last updated: 2026-08-19.
 
 This is the working list for getting `speech-to-text.huis` from design proposal to a running LAN service with a small management frontend.
 
@@ -61,6 +61,10 @@ This is the working list for getting `speech-to-text.huis` from design proposal 
 - [x] Reject unauthenticated transcription requests before reading large request bodies where Fastify allows it.
 - [x] Accept multipart field `file`.
 - [x] Accept optional `language`.
+- [x] Accept an optional transcription `prompt` of up to 2,000 characters.
+- [x] Forward non-empty prompts without logging their content.
+- [x] Normalize spoken `at channel` and `at here` only when the prompt includes
+  the corresponding Slack broadcast token.
 - [x] Keep `model` server-controlled for v1 unless an explicit allowlist is added.
 - [x] Enforce maximum audio size.
 - [x] Validate supported audio MIME types and include OpenAI-compatible aliases:
@@ -171,6 +175,8 @@ This is the working list for getting `speech-to-text.huis` from design proposal 
 - [x] Expose sanitized recent client logs in the admin panel.
 - [x] Test trusted loopback proxy addresses and reject spoofed forwarding headers from other peers.
 - [x] Test multipart file/field limit errors as `400 invalid_request`.
+- [x] Test prompt forwarding, length validation, log privacy, and prompted
+  Slack broadcast normalization.
 
 ## 9. Tooling and Source Hygiene
 

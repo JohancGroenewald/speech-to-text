@@ -13,6 +13,7 @@ const BASE_REQUEST = {
   mimeType: 'audio/wav',
   language: ' en ',
   model: 'gpt-4o-transcribe',
+  prompt: '  Preserve Slack and TalkToMe.  ',
   timeoutMs: 1000
 };
 
@@ -37,11 +38,28 @@ test('builds the OpenAI multipart request and returns a trimmed transcript', asy
   assert.equal(request.options.body.get('model'), 'gpt-4o-transcribe');
   assert.equal(request.options.body.get('response_format'), 'json');
   assert.equal(request.options.body.get('language'), 'en');
+  assert.equal(request.options.body.get('prompt'), 'Preserve Slack and TalkToMe.');
   const file = request.options.body.get('file');
   assert.equal(file.name, 'speech.wav');
   assert.equal(file.type, 'audio/wav');
   assert.deepEqual(Buffer.from(await file.arrayBuffer()), BASE_REQUEST.audioBuffer);
   assert.equal(request.options.signal.aborted, false);
+});
+
+test('omits empty optional hints from the OpenAI request', async () => {
+  let form;
+  await transcribeWithOpenAI({
+    ...BASE_REQUEST,
+    language: ' ',
+    prompt: ' ',
+    fetchImpl: async (_url, options) => {
+      form = options.body;
+      return jsonResponse(200, { text: 'hello' });
+    }
+  });
+
+  assert.equal(form.has('language'), false);
+  assert.equal(form.has('prompt'), false);
 });
 
 test('uses provider-compatible extensions for supported MIME aliases', () => {

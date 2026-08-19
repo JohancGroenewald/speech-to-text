@@ -17,6 +17,7 @@ The service owns:
 
 - client authentication;
 - request and audio validation;
+- prompt validation and prompt-requested Slack broadcast cleanup;
 - provider credentials, request construction, and timeout handling;
 - stable API responses and request IDs;
 - managed client-token lifecycle;
@@ -29,13 +30,16 @@ an OpenAI credential or the admin token.
 
 1. nginx accepts HTTPS on `speech-to-text.huis` and proxies to loopback Fastify.
 2. Fastify authenticates the client before consuming the multipart file.
-3. The server accepts one supported audio file and an optional language hint.
+3. The server accepts one supported audio file plus optional language and
+   prompt hints.
 4. The server enforces the 25 MiB file limit and rejects unknown fields.
 5. The OpenAI adapter sends the configured model, JSON response format,
-   language hint when present, and the audio file.
+   language and prompt hints when present, and the audio file.
 6. The adapter trims transcript text and maps timeout, provider, and empty-text
    failures to stable API errors.
-7. The server returns transcript text and request metadata without persisting
+7. The server applies only Slack broadcast rewrites explicitly requested by
+   literal `@channel` or `@here` tokens in the prompt.
+8. The server returns transcript text and request metadata without persisting
    transcript history.
 
 ## Runtime Stack
@@ -66,6 +70,9 @@ src/config.js
 
 src/transcribers/openai.js
   Provider multipart request, timeout, response parsing, and provider errors.
+
+src/slackFormatting.js
+  Prompt-opted-in deterministic cleanup for Slack broadcast mentions.
 
 src/auth/clientKeys.js
   Environment-token verification, managed hashed-key storage, serialized
@@ -122,6 +129,10 @@ around a maximum-size file. Multipart file-count, field-count, and schema
 violations are `400 invalid_request`; only an oversized audio file is
 `413 audio_too_large`.
 
+Prompts are trimmed, limited to 2,000 Unicode code points, and forwarded only
+when non-empty. The multipart byte ceiling allows the maximum prompt to consist
+entirely of four-byte UTF-8 characters. Prompt content is never logged.
+
 Fastify binds to loopback in production and trusts forwarded addresses only
 from `127.0.0.1` or `::1`. This records the LAN client address supplied by nginx
 without accepting spoofed forwarding headers from a direct non-loopback peer.
@@ -129,7 +140,8 @@ without accepting spoofed forwarding headers from a direct non-loopback peer.
 ## Logging and Privacy
 
 The default logger redacts the authorization header. Audit events contain only
-operational metadata. Raw audio is never logged. Transcript logging requires an
+operational metadata. Raw audio and prompt text are never logged; only prompt
+presence and character count are recorded. Transcript logging requires an
 explicit `LOG_TRANSCRIPTS=true`; the admin journal reader still excludes
 transcript events and text.
 
@@ -145,6 +157,7 @@ The test suite covers:
 - environment and managed client-token flows;
 - non-blocking failure of last-used metadata persistence;
 - route authentication, multipart parsing, MIME and size validation;
+- prompt forwarding, length validation, log privacy, and Slack normalization;
 - correct multipart limit error classification;
 - forwarded client addresses and untrusted-header rejection;
 - direct OpenAI request construction, extensions, errors, empty responses,
@@ -164,6 +177,7 @@ restart or commit.
 - public-internet exposure;
 - multiple transcription providers;
 - per-client rate limiting.
+- Slack member and channel directory resolution.
 
 These additions require explicit API and privacy decisions rather than being
 implicit extensions of the current v1 contract.

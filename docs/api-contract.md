@@ -58,10 +58,40 @@ Multipart fields:
 ```text
 file      required  one audio file, maximum 26214400 bytes (25 MiB)
 language  optional  language hint, for example en or af
+prompt    optional  vocabulary and formatting context, maximum 2000 characters
 ```
 
 The transcription model is controlled by the server. A client-supplied `model`
 field or any unknown field produces `400 invalid_request`.
+
+The service trims and forwards a non-empty `prompt` to the configured model.
+Use it for expected vocabulary, acronyms, capitalization, and formatting. A
+prompt is a recognition hint, not a guarantee, so clients should keep the
+result as an unsent draft until the user reviews it.
+
+Slack broadcast cleanup is explicitly prompt-driven. If the prompt contains
+the literal token `@channel` or `@here`, the service replaces the corresponding
+case-insensitive spoken phrase `at channel` or `at here` in the returned text.
+Without those tokens, transcript text is not rewritten. The service does not
+resolve member names or channel names and will not turn `at Johan` into a real
+Slack mention.
+
+Suggested Slack context:
+
+```text
+Transcribe this as a Slack message. When clearly spoken, write:
+“at channel” as “@channel”
+“at here” as “@here”
+“hash general” as “#general”
+
+Preserve Slack, TalkToMe, Gitea, product names, URLs, and issue IDs.
+Do not invent mentions that were not explicitly spoken.
+```
+
+The model prompt supplies the `hash general` and vocabulary guidance. The
+deterministic post-processing step is deliberately limited to the two Slack
+broadcast terms because member and channel names require workspace-aware
+resolution and ambiguity handling.
 
 Supported audio MIME types:
 
@@ -85,6 +115,7 @@ curl -fsS \
   -H "Authorization: Bearer $SPEECH_TO_TEXT_CLIENT_KEY" \
   -F "file=@sample.wav;type=audio/wav" \
   -F "language=en" \
+  -F 'prompt=Transcribe this as a Slack message. Write "at channel" as "@channel" and "at here" as "@here".' \
   https://speech-to-text.huis/v1/transcriptions
 ```
 
@@ -100,8 +131,9 @@ Successful response:
 }
 ```
 
-The service trims surrounding whitespace from provider transcript text. An
-empty result is an error rather than a successful response.
+The service trims surrounding whitespace from provider transcript text, then
+applies any prompt-requested Slack broadcast cleanup. An empty result is an
+error rather than a successful response.
 
 ### Error Responses
 
@@ -121,7 +153,7 @@ Implemented transcription status codes:
 
 | HTTP | Code | Meaning |
 | --- | --- | --- |
-| 400 | `invalid_request` | Missing file, unsupported field, multipart count violation, or malformed request. |
+| 400 | `invalid_request` | Missing file, unsupported field, overlong prompt, multipart count violation, or malformed request. |
 | 401 | `unauthorized` | Missing or invalid client token. |
 | 413 | `audio_too_large` | The audio file exceeds `MAX_AUDIO_BYTES`. |
 | 415 | `unsupported_media` | The declared audio MIME type is not supported. |
@@ -230,6 +262,7 @@ enabled elsewhere in the service journal.
 
 Authenticated transcription requests generate request, audio, completion,
 response, and failure metadata events as applicable. They include identifiers,
-sizes, MIME types, status, latency, provider, and model. Authorization headers
-are redacted. Transcript text is logged only when `LOG_TRANSCRIPTS=true`; raw
-audio is never logged.
+sizes, MIME types, prompt presence and character count, status, latency,
+provider, and model. Authorization headers are redacted. Prompt text is never
+logged. Transcript text is logged only when `LOG_TRANSCRIPTS=true`; raw audio
+is never logged.
