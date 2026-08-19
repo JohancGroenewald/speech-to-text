@@ -2,7 +2,7 @@
 
 Status: core implementation and the first server rollout are complete;
 client-side rollout and observation continue.
-Last updated: 2026-08-19.
+Last updated: 2026-08-20.
 
 This is the working list for getting `speech-to-text.huis` from design proposal to a running LAN service with a small management frontend.
 
@@ -251,6 +251,6 @@ This is the working list for getting `speech-to-text.huis` from design proposal 
 - [x] Correct multipart count-limit error classification.
 - [x] Add direct provider-adapter and edge-case regression tests.
 - [x] Reconcile README, API, deployment, operations, architecture, rollout, and tracker documentation.
-- [x] Align the rollout check with the TalkToMe `0.0.93` feed release.
+- [x] Align the rollout check with the TalkToMe `0.0.94` feed release.
 - [x] Commit and deploy the reviewed service and nginx changes.
 - [x] Restart the Node service, reload nginx, and run live health, readiness, smoke, and rollout checks.

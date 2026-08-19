@@ -1,6 +1,6 @@
 {
   "name": "speech-to-text",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "LAN speech-to-text API for TalkToMe and trusted local clients.",
   "main": "src/server.js",
   "directories": {

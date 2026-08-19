@@ -1,7 +1,7 @@
 # Speech-to-Text Local API
 
 Deployment target: `speech-to-text.huis` on the trusted Huis LAN. The repository
-rollout target is TalkToMe `0.0.93`; use `npm run rollout:status` to verify live
+rollout target is TalkToMe `0.0.94`; use `npm run rollout:status` to verify live
 service and extension-feed state.
 
 This Node.js service accepts an authenticated audio upload, sends it to the
