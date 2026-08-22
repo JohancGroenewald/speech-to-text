@@ -2,7 +2,7 @@ const OPENAPI_DOCUMENT = {
   openapi: '3.1.0',
   info: {
     title: 'Huis Speech-to-Text API',
-    version: '0.2.1',
+    version: '0.2.2',
     description:
       'LAN speech-to-text API for TalkToMe and trusted local clients. The service accepts authenticated multipart audio uploads and returns transcript JSON.'
   },

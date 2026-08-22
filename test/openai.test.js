@@ -67,6 +67,7 @@ test('uses provider-compatible extensions for supported MIME aliases', () => {
     ['audio/wav', 'wav'],
     ['audio/x-wav', 'wav'],
     ['audio/webm', 'webm'],
+    ['audio/ogg', 'ogg'],
     ['audio/mp4', 'mp4'],
     ['audio/mpeg', 'mp3'],
     ['audio/mp3', 'mp3'],

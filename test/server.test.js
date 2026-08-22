@@ -122,7 +122,7 @@ test('transcription requires bearer auth', async () => {
   assert.equal(response.json().error.code, 'unauthorized');
 });
 
-test('transcribes multipart audio with optional language', async () => {
+test('transcribes WhatsApp OGG audio with optional language', async () => {
   const app = createTestServer();
   const boundary = '----speech-to-text-test';
   const response = await app.inject({
@@ -134,13 +134,13 @@ test('transcribes multipart audio with optional language', async () => {
     },
     payload: multipartBody(boundary, [
       fieldPart(boundary, 'language', 'en'),
-      filePart(boundary, 'file', 'sample.wav', 'audio/wav', Buffer.from('RIFFdata'))
+      filePart(boundary, 'file', 'whatsapp-recording.ogg', 'audio/ogg', Buffer.from('OggSdata'))
     ])
   });
 
   assert.equal(response.statusCode, 200, response.body);
   const body = response.json();
-  assert.equal(body.text, 'hello en audio/wav 8');
+  assert.equal(body.text, 'hello en audio/ogg 8');
   assert.equal(body.model, 'gpt-4o-transcribe');
   assert.equal(body.provider, 'openai');
   assert.match(body.request_id, /^req_/);

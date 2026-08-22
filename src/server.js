@@ -26,6 +26,7 @@ const SUPPORTED_AUDIO_TYPES = new Set([
   'audio/wave',
   'audio/x-wav',
   'audio/webm',
+  'audio/ogg',
   'audio/mp4',
   'audio/mpeg',
   'audio/mp3',

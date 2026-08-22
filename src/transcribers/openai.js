@@ -91,6 +91,9 @@ function extensionForMimeType(mimeType) {
   if (normalized.includes('m4a')) {
     return 'm4a';
   }
+  if (normalized.includes('ogg')) {
+    return 'ogg';
+  }
   return 'webm';
 }
 

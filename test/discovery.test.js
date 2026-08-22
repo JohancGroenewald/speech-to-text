@@ -55,6 +55,7 @@ test('serves detailed LLM discovery guide', async () => {
   assert.equal(response.statusCode, 200);
   assert.match(response.headers['content-type'], /text\/plain/);
   assert.match(response.body, /audio\/x-wav/);
+  assert.match(response.body, /audio\/ogg/);
   assert.match(response.body, /model: forbidden in v1/);
   assert.match(response.body, /does not resolve people or channels/);
   assert.match(response.body, /ADMIN_API_TOKEN/);
@@ -71,7 +72,7 @@ test('serves OpenAPI discovery schema', async () => {
   const body = response.json();
   assert.equal(body.openapi, '3.1.0');
   assert.equal(body.info.title, 'Huis Speech-to-Text API');
-  assert.equal(body.info.version, '0.2.1');
+  assert.equal(body.info.version, '0.2.2');
   assert.ok(body.paths['/v1/transcriptions'].post);
   const requestProperties =
     body.paths['/v1/transcriptions'].post.requestBody.content['multipart/form-data'].schema.properties;
